@@ -41,3 +41,5 @@ yarn-error.log*
 next-env.d.ts
 
 venv/
+src/assets/phases.real/
+src/assets/phases/*.png

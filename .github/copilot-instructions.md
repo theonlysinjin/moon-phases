@@ -13,8 +13,9 @@ This project uses **TypeScript** and **React** (with Next.js) for the frontend, 
   - Use hooks (e.g., `useState`, `useEffect`) for state and side effects.
   - Keep components small and focused.
 - **Styling:**
-  - Use Tailwind CSS utility classes for layout and design.
+  - Use Tailwind CSS utility classes for layout and design, including theming (e.g., bg-black text-white for dark/minimal themes).
   - Keep print styles in mind (e.g., `@media print`).
+  - Ensure responsive design for all components.
 
 ## Backend API
 
@@ -23,6 +24,7 @@ This project uses **TypeScript** and **React** (with Next.js) for the frontend, 
   - `GET /moon-phase?city=London` (current day)
   - `GET /moon-phases?city=London&date_from=YYYYMMDD&date_to=YYYYMMDD` (date range)
 - Cities are hardcoded in the backend; to add more, edit the `CITY_COORDS` dict.
+- Supported cities: Cape Town, New York, London, Hong Kong, Melbourne, San Francisco, Tokyo
 
 ### Example Response (`/moon-phases`):
 ```json
@@ -65,17 +67,22 @@ export type MoonPhaseEntry = {
 ## File & Component Structure
 
 - Place components in `/components`.
-- Pages go in `/pages` (Next.js convention).
+  - `LocationSelector.tsx` (city dropdown)
+  - `CalendarGrid.tsx` (calendar grid with infinite scroll)
+- Main app logic in `/app/page.tsx` (handles state, theme, infinite scroll, poster mode)
 - Types and interfaces in `/types`.
 - Utilities/helpers in `/utils`.
+- Moon phase images in `/assets/phases/`.
 - Backend code in `/backend`.
 
 ## Copilot Prompting Tips
 
-- **Be explicit:** When starting a new file or component, describe what you want (e.g., "Create a MoonPhaseGrid component that displays weeks in a scrollable grid").
+- **Be explicit:** When starting a new file or component, describe what you want (e.g., "Create a CalendarGrid component with infinite scroll and theme support").
 - **Type-first:** Define the type/interface for your data before generating logic. Use the `MoonPhaseEntry` type above for moon data.
 - **Iterate:** Let Copilot scaffold, then refine and add types as needed.
 - **Ask for examples:** Copilot can generate sample data, API calls, and more.
+- **Reference features:** Mention if your component should support themes, infinite scroll, or other features from the checklist.
+- **Mention poster mode, PDF export, and year navigation if relevant.**
 
 ## Example: Minimal TypeScript Component
 
@@ -98,6 +105,7 @@ export function MoonPhase({ entry }: { entry: MoonPhaseEntry }) {
 - Keep types simple and focused on what matters for UI/data.
 - Use Copilot to generate repetitive code, but always review and refine.
 - Don’t hesitate to ask Copilot for help with types, hooks, or API integration.
+- Use Tailwind for all layout, theming, and responsive design.
 
 ## Documentation Structure
 
@@ -108,22 +116,23 @@ export function MoonPhase({ entry }: { entry: MoonPhaseEntry }) {
 ## How to Start a New Feature
 - Review the relevant sections in TECHNICAL.md
 - Create or update types/interfaces first (see above)
-- Scaffold the component in /components or page in /pages
-- Use Tailwind CSS for all UI styling
+- Scaffold the component in /components or page in /app
+- Use Tailwind CSS for all UI styling and theming
 - Write minimal, clear types for all props and data
 - Test locally before submitting a PR
+- Reference the features checklist to ensure consistency
 
 ## Review Checklist (for PRs)
 - [ ] All new code uses TypeScript types/interfaces
 - [ ] Components are functional and use hooks
-- [ ] Tailwind CSS classes are used for styling
+- [ ] Tailwind CSS classes are used for styling and theming
 - [ ] No unused variables or imports
 - [ ] Code is readable and commented where needed
 - [ ] All tests (if any) pass
 
 ## Common Pitfalls
 - Forgetting to type component props
-- Not using Tailwind for layout/design
+- Not using Tailwind for layout/design/theming
 - Overcomplicating types (keep them minimal)
 - Not checking TECHNICAL.md for requirements
 - Not matching the backend data shape in frontend types
@@ -133,12 +142,16 @@ export function MoonPhase({ entry }: { entry: MoonPhaseEntry }) {
 - "Generate a TypeScript type for a moon phase entry."
 - "Add Tailwind classes for a responsive grid layout."
 - "Show me how to fetch data from an API in Next.js."
+- "Add theme support to my CalendarGrid component."
+- "Implement infinite scroll for my calendar."
+- "Add poster mode with year navigation and PDF export."
 
 ## Where to Find Things
 - `/components`: UI components (e.g., LocationSelector, CalendarGrid)
-- `/pages`: Next.js pages (entry points)
+- `/app`: Main app logic (page.tsx)
 - `/types`: TypeScript types and interfaces
 - `/utils`: API calls and helpers
+- `/assets/phases/`: Moon phase images
 - `/backend`: Flask backend for moon phase data
 - `TECHNICAL.md`: Specs, architecture, and data models
 - `README.md`: Project overview and backend API

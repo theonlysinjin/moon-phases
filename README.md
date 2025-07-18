@@ -1,5 +1,19 @@
 # Moon Calendar
 
+## Features
+
+- [x] Location-based moon phase calendar (city dropdown)
+- [x] Infinite scroll for calendar data (6-month chunks)
+- [x] Responsive, full-screen calendar grid
+- [x] Theme support (Traditional, Minimal, Lunar Cycle, Poster, Poster Print)
+- [x] Poster mode: year navigation and PDF export
+- [ ] Integrate location search (map/geolocation)
+- [ ] Integrate with external print-on-demand services
+- [ ] Add more themes (e.g., Dark, Solarized, etc)
+- [ ] User accounts for saving favorites
+- [ ] Expand city/location options
+- [ ] Enhanced design customization
+
 This project is a [Next.js](https://nextjs.org) app with a custom Python backend for moon phase data. The backend provides location-based moon phase information via a REST API.
 
 ## Getting Started
@@ -55,6 +69,15 @@ By default, the API runs at [http://127.0.0.1:5000](http://127.0.0.1:5000).
 - `moon_age_days`: Days since last new moon
 - `next_major_phase`: Object with `name` and `date_utc` for the next major phase
 
+##### Supported Cities
+- Cape Town
+- New York
+- London
+- Hong Kong
+- Melbourne
+- San Francisco
+- Tokyo
+
 ### 2. Run the Frontend (Next.js)
 
 ```bash
@@ -64,7 +87,15 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) to view the app.
 
-The frontend fetches moon phase data from the backend API. You may need to configure the frontend to point to the backend URL if running separately.
+The frontend fetches moon phase data from the backend API. You may need to configure the frontend to point to the backend URL if running separately (see `.env.local`).
+
+- City selection is via dropdown (see top of page)
+- Theme selection (Traditional, Minimal, Lunar Cycle, Poster, Poster Print) is available
+- Calendar supports infinite scroll (loads more data as you scroll)
+- Poster mode supports year navigation and PDF export
+
+### Assets
+- Moon phase images are located in `src/assets/phases/` and used for visual representation in the calendar.
 
 ## Learn More
 

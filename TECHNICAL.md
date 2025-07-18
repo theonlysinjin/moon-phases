@@ -1,22 +1,34 @@
 # TECHNICAL.md
 
-This document details the technical specifications, architecture, and implementation plan for the Moon Calendar project.
+## Features Checklist
 
-For a high-level overview, see [README.md]. For coding conventions and Copilot usage, see [copilot-instructions.md].
+- [x] Location-based moon phase calendar (city dropdown)
+- [x] Infinite scroll for calendar data (6-month chunks)
+- [x] Responsive, full-screen calendar grid
+- [x] Theme support (Traditional, Minimal, Lunar Cycle, Poster, Poster Print)
+- [x] Poster mode: year navigation and PDF export
+- [ ] Integrate location search (map/geolocation)
+- [ ] Integrate with external print-on-demand services
+- [ ] Add more themes (e.g., Dark, Solarized, etc)
+- [ ] User accounts for saving favorites
+- [ ] Expand city/location options
+- [ ] Enhanced design customization
 
 ---
 
 ## 1. Core Features & Flow
 
 ### 1.1. Location-Based Moon Calendar
-- On first visit, user is prompted with a “Select Location” screen.
-- Initial city options (hardcoded for MVP):
+- On first visit, user is prompted with a “Select Location” screen (city dropdown).
+- Initial city options (hardcoded):
   - Cape Town
   - New York
   - London
-  - Tokyo
+  - Hong Kong
+  - Melbourne
   - San Francisco
-- (Future) Integrate with a map/geolocation service for broader city selection.
+  - Tokyo
+- (Planned) Integrate with a map/geolocation service for broader city selection.
 
 ### 1.2. Moon Phase Data Integration
 - The app uses a custom Flask backend (`backend/moon_phase_api.py`) to provide moon phase data by city.
@@ -50,8 +62,7 @@ GET /moon-phases?city=Cape%20Town&date_from=20250701&date_to=20250707
       "date_utc": "2025-07-02T19:30:07.108865",
       "name": "First Quarter"
     }
-  },
-  // ... more days
+  }
 ]
 ```
 
@@ -73,9 +84,11 @@ GET /moon-phases?city=Cape%20Town&date_from=20250701&date_to=20250707
 - **Framework:** Flask
 - **Astronomy Library:** ephem
 - **File:** `backend/moon_phase_api.py`
-- **Cities Supported:** Hardcoded in `CITY_COORDS` dict
+- **Cities Supported:** Hardcoded in `CITY_COORDS` dict (see above)
 - **Endpoints:** `/moon-phase`, `/moon-phases`
 - **Deployment:** Run with `python moon_phase_api.py`
+- **CORS:** Enabled for all origins
+- **Frontend Proxy:** Can proxy to Next.js dev server if needed
 
 ---
 
@@ -84,6 +97,9 @@ GET /moon-phases?city=Cape%20Town&date_from=20250701&date_to=20250707
 - The Next.js frontend fetches data from the Flask backend.
 - API URL may need to be configured depending on deployment (e.g., proxy or CORS).
 - Data is fetched for the selected city and date range to render the calendar grid.
+- Infinite scroll is implemented: as the user scrolls, more moon phase data is fetched and appended (6-month chunks).
+- Theme selection is available (Traditional, Minimal, Lunar Cycle, Poster, Poster Print).
+- Poster mode supports year navigation and PDF export.
 
 ---
 
@@ -109,28 +125,31 @@ export type MoonPhaseEntry = {
 
 ---
 
-## 5. Component & File Structure (Draft)
+## 5. Component & File Structure
 
 - `/components`
-  - `LocationSelector.tsx`
-  - `CalendarGrid.tsx`
-  - `MoonPhaseIcon.tsx`
-- `/pages`
-  - `index.tsx` (main entry)
+  - `LocationSelector.tsx` (city dropdown)
+  - `CalendarGrid.tsx` (calendar grid with infinite scroll)
+- `/app`
+  - `page.tsx` (main entry, handles state, theme, infinite scroll, poster mode)
+  - `layout.tsx`, `globals.css` (global styles and layout)
 - `/types`
   - `moonPhase.ts`
 - `/utils`
   - `api.ts` (API calls)
+- `/assets/phases/`
+  - Moon phase images (used for visual representation)
 - `/backend`
   - `moon_phase_api.py` (Flask backend)
 
 ---
 
 ## 6. Future Technical Roadmap
-- Integrate print-on-demand service
-- Add user accounts for saving favorites
-- Expand city/location options
-- Enhanced design customization
+- [ ] Integrate print-on-demand service
+- [ ] Add user accounts for saving favorites
+- [ ] Expand city/location options (map/geolocation)
+- [ ] Enhanced design customization
+- [ ] Add more themes (e.g., Dark, Solarized)
 
 ---
 
