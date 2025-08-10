@@ -2,6 +2,7 @@
   "name": "moon-calendar",
   "version": "0.1.0",
   "private": true,
+  "description": "Beautiful lunar phases by city with infinite scroll and a printable poster view.",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
