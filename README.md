@@ -5,8 +5,8 @@
 - [x] Location-based moon phase calendar (city dropdown)
 - [x] Infinite scroll for calendar data (6-month chunks)
 - [x] Responsive, full-screen calendar grid
-- [x] Theme support (Traditional, Minimal, Lunar Cycle, Poster, Poster Print)
-- [x] Poster mode: year navigation and PDF export
+- [x] Theme support (Traditional, Minimal, Lunar Cycle, Poster)
+- [x] Poster mode: year navigation and PDF export (Poster theme only)
 - [ ] Integrate location search (map/geolocation)
 - [ ] Integrate with external print-on-demand services
 - [ ] Add more themes (e.g., Dark, Solarized, etc)
@@ -90,12 +90,33 @@ Open [http://localhost:3000](http://localhost:3000) to view the app.
 The frontend fetches moon phase data from the backend API. You may need to configure the frontend to point to the backend URL if running separately (see `.env.local`).
 
 - City selection is via dropdown (see top of page)
-- Theme selection (Traditional, Minimal, Lunar Cycle, Poster, Poster Print) is available
+- Theme selection (Traditional, Minimal, Lunar Cycle, Poster) is available
 - Calendar supports infinite scroll (loads more data as you scroll)
 - Poster mode supports year navigation and PDF export
 
 ### Assets
 - Moon phase images are located in `src/assets/phases/` and used for visual representation in the calendar.
+
+## Deployment (GitHub Pages)
+
+This repo includes a GitHub Actions workflow to build and deploy the static export to GitHub Pages.
+
+- Workflow: `.github/workflows/deploy-pages.yml`
+- Trigger: Push to `main` (or manual run)
+- Steps:
+  - Generates moon phase PNGs using `src/assets/phases/image.py` (requires a system emoji font)
+  - Builds a static export (`out/`) with Next.js (`output: export`)
+  - Uploads and deploys `out/` to GitHub Pages
+
+Notes:
+- The workflow sets `NEXT_BASE_PATH` and `NEXT_ASSET_PREFIX` so assets work under `https://<owner>.github.io/<repo>/`.
+- Ensure Pages is enabled in repo settings with source "GitHub Actions".
+
+Local static export:
+```bash
+npm run build
+# output in ./out
+```
 
 ## Learn More
 

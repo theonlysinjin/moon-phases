@@ -5,8 +5,8 @@
 - [x] Location-based moon phase calendar (city dropdown)
 - [x] Infinite scroll for calendar data (6-month chunks)
 - [x] Responsive, full-screen calendar grid
-- [x] Theme support (Traditional, Minimal, Lunar Cycle, Poster, Poster Print)
-- [x] Poster mode: year navigation and PDF export
+- [x] Theme support (Traditional, Minimal, Lunar Cycle, Poster)
+- [x] Poster mode: year navigation and PDF export (Poster theme only)
 - [ ] Integrate location search (map/geolocation)
 - [ ] Integrate with external print-on-demand services
 - [ ] Add more themes (e.g., Dark, Solarized, etc)
@@ -98,7 +98,7 @@ GET /moon-phases?city=Cape%20Town&date_from=20250701&date_to=20250707
 - API URL may need to be configured depending on deployment (e.g., proxy or CORS).
 - Data is fetched for the selected city and date range to render the calendar grid.
 - Infinite scroll is implemented: as the user scrolls, more moon phase data is fetched and appended (6-month chunks).
-- Theme selection is available (Traditional, Minimal, Lunar Cycle, Poster, Poster Print).
+- Theme selection is available (Traditional, Minimal, Lunar Cycle, Poster).
 - Poster mode supports year navigation and PDF export.
 
 ---

@@ -89,6 +89,46 @@ export default function Home() {
   // const [nonPosterCache, setNonPosterCache] = useState<Record<string, Record<string, MoonPhaseEntry[]>>>({}); // unused
   const posterRef = useRef<HTMLDivElement | null>(null);
 
+  // Perf ticker state
+  type PerfLog = {
+    startedAt: number;
+    finishedAt: number;
+    durationMs: number;
+    city: string;
+    from: string;
+    to: string;
+    numEntries: number;
+    theme: string;
+  };
+  const [perfOpen, setPerfOpen] = useState(false);
+  const [perfLogs, setPerfLogs] = useState<PerfLog[]>([]);
+  const logPerf = (
+    city: string,
+    from: string,
+    to: string,
+    startedAt: number,
+    finishedAt: number,
+    numEntries: number,
+    theme: string
+  ) => {
+    setPerfLogs(prev => {
+      const next: PerfLog[] = [
+        {
+          startedAt,
+          finishedAt,
+          durationMs: finishedAt - startedAt,
+          city,
+          from,
+          to,
+          numEntries,
+          theme,
+        },
+        ...prev,
+      ];
+      return next.slice(0, 50);
+    });
+  };
+
   // Fetch more moon phases (next chunk)
   type FetchDirection = 'up' | 'down' | undefined;
   const fetchMore = async (direction?: FetchDirection | number) => {
@@ -96,12 +136,15 @@ export default function Home() {
     setLoading(true);
     try {
       let dateFrom: string, dateTo: string, yearToFetch: number | undefined;
-      if (['poster','poster-print'].includes(selectedTheme)) {
+        if (['poster'].includes(selectedTheme)) {
         yearToFetch = typeof direction === 'number' ? direction : posterYear;
         dateFrom = `${yearToFetch}0101`;
         dateTo = `${yearToFetch}1231`;
         const cityName = selectedCity.label;
-        const data = await fetchMoonPhases(cityName, dateFrom, dateTo);
+          const t0 = performance.now();
+          const data = await fetchMoonPhases(cityName, dateFrom, dateTo);
+          const t1 = performance.now();
+          logPerf(cityName, dateFrom, dateTo, t0, t1, data.length, selectedTheme);
         setPosterData(prev => ({ ...prev, [yearToFetch!]: data }));
         setMoonPhases(data);
         setDateRange({ from: dateFrom, to: dateTo });
@@ -120,7 +163,10 @@ export default function Home() {
           dateToObj.setMonth(dateToObj.getMonth() + 6);
           dateToObj.setDate(dateToObj.getDate() - 1);
           dateTo = dateToObj.toISOString().slice(0, 10).replace(/-/g, "");
+          const t0 = performance.now();
           const data = await fetchMoonPhases(cityName, dateFrom, dateTo);
+          const t1 = performance.now();
+          logPerf(cityName, dateFrom, dateTo, t0, t1, data.length, selectedTheme);
           setMoonPhases((prev) => (prev ? [...prev, ...data] : data));
           setDateRange({ from: dateRange.from, to: dateTo });
         } else if (direction === 'up') {
@@ -135,7 +181,10 @@ export default function Home() {
           fromDateObj.setMonth(fromDateObj.getMonth() - 6);
           fromDateObj.setDate(1); // Start at first of the month
           dateFrom = fromDateObj.toISOString().slice(0, 10).replace(/-/g, "");
+          const t0 = performance.now();
           const data = await fetchMoonPhases(cityName, dateFrom, dateTo);
+          const t1 = performance.now();
+          logPerf(cityName, dateFrom, dateTo, t0, t1, data.length, selectedTheme);
           setMoonPhases((prev) => (prev ? [...data, ...prev] : data));
           setDateRange({ from: dateFrom, to: dateRange.to });
         }
@@ -210,11 +259,14 @@ export default function Home() {
         let dateFrom, dateTo;
         const now = new Date();
         const year = now.getFullYear();
-        if (['poster','poster-print'].includes(selectedTheme)) {
+        if (['poster'].includes(selectedTheme)) {
           dateFrom = `${year}0101`;
           dateTo = `${year}1231`;
           const cityName = selectedCity.label;
+          const t0 = performance.now();
           const data = await fetchMoonPhases(cityName, dateFrom, dateTo);
+          const t1 = performance.now();
+          logPerf(cityName, dateFrom, dateTo, t0, t1, data.length, selectedTheme);
           setPosterData(prev => ({ ...prev, [year]: data })); // Merge instead of replace
           setPosterYear(year);
           setMoonPhases(data);
@@ -227,7 +279,10 @@ export default function Home() {
           dateFrom = start.toISOString().slice(0, 10).replace(/-/g, "");
           dateTo = end.toISOString().slice(0, 10).replace(/-/g, "");
           const cityName = selectedCity.label;
+          const t0 = performance.now();
           const data = await fetchMoonPhases(cityName, dateFrom, dateTo);
+          const t1 = performance.now();
+          logPerf(cityName, dateFrom, dateTo, t0, t1, data.length, selectedTheme);
           setMoonPhases(data);
           setDateRange({ from: dateFrom, to: dateTo });
         } else {
@@ -236,7 +291,10 @@ export default function Home() {
           dateToObj.setDate(now.getDate() + 89); // 90 days including today
           dateTo = dateToObj.toISOString().slice(0, 10).replace(/-/g, "");
           const cityName = selectedCity.label;
+          const t0 = performance.now();
           const data = await fetchMoonPhases(cityName, dateFrom, dateTo);
+          const t1 = performance.now();
+          logPerf(cityName, dateFrom, dateTo, t0, t1, data.length, selectedTheme);
           setMoonPhases(data);
           setDateRange({ from: dateFrom, to: dateTo });
         }
@@ -253,13 +311,55 @@ export default function Home() {
     <div
       className={`flex flex-col items-center justify-center min-h-screen p-8 gap-8 ${selectedTheme === 'traditional' ? 'bg-white text-black' : 'bg-black text-white'}`}
     >
+      {/* Perf ticker */}
+      <div className="fixed bottom-4 right-4 z-50">
+        <button
+          onClick={() => setPerfOpen(o => !o)}
+          className="px-3 py-2 text-xs rounded bg-gray-800 text-gray-200 hover:bg-gray-700 border border-gray-600 shadow"
+          title="Show generation stats"
+        >
+          {(() => {
+            const last = perfLogs[0];
+            const toStr = dateRange ? `${dateRange.to.slice(0,4)}-${dateRange.to.slice(4,6)}-${dateRange.to.slice(6,8)}` : '—';
+            return last ? `Gen ${Math.round(last.durationMs)}ms • to ${toStr}` : `Gen • to ${toStr}`;
+          })()}
+        </button>
+        {perfOpen && (
+          <div className="mt-2 w-80 max-h-64 overflow-auto bg-gray-900 text-gray-200 text-xs border border-gray-700 rounded shadow-lg p-2">
+            <div className="font-semibold mb-1">Generation Stats</div>
+            <div className="mb-1">Loaded to: {dateRange ? `${dateRange.to.slice(0,4)}-${dateRange.to.slice(4,6)}-${dateRange.to.slice(6,8)}` : '—'}</div>
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className="text-gray-400">
+                  <th className="text-left pr-2">ms</th>
+                  <th className="text-left pr-2">city</th>
+                  <th className="text-left pr-2">from</th>
+                  <th className="text-left pr-2">to</th>
+                  <th className="text-right">#</th>
+                </tr>
+              </thead>
+              <tbody>
+                {perfLogs.slice(0, 20).map((log, i) => (
+                  <tr key={log.finishedAt + '-' + i}>
+                    <td className="pr-2">{Math.round(log.durationMs)}</td>
+                    <td className="pr-2">{log.city}</td>
+                    <td className="pr-2">{`${log.from.slice(0,4)}-${log.from.slice(4,6)}-${log.from.slice(6,8)}`}</td>
+                    <td className="pr-2">{`${log.to.slice(0,4)}-${log.to.slice(4,6)}-${log.to.slice(6,8)}`}</td>
+                    <td className="text-right">{log.numEntries}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
       <div className="w-full max-w-md flex flex-col gap-4 mb-2">
         <div className="flex-1">
           <label htmlFor="city-select" className="block mb-1 font-medium">City:</label>
           <LocationSelector
             cities={cities}
             onSelect={setSelectedCity}
-            className={`w-full border rounded px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 ${['minimal','lunar-cycle','poster','poster-print'].includes(selectedTheme) ? 'bg-gray-900 text-white border-gray-700 placeholder-gray-400' : 'bg-white text-black border-gray-300'}`}
+            className={`w-full border rounded px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 ${['minimal','lunar-cycle','poster'].includes(selectedTheme) ? 'bg-gray-900 text-white border-gray-700 placeholder-gray-400' : 'bg-white text-black border-gray-300'}`}
           />
         </div>
         <div className="flex-1">
@@ -268,13 +368,13 @@ export default function Home() {
             id="theme-select"
             value={selectedTheme}
             onChange={e => setSelectedTheme(e.target.value)}
-            className={`w-full border rounded px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 ${['minimal','lunar-cycle','poster','poster-print'].includes(selectedTheme) ? 'bg-gray-900 text-white border-gray-700' : 'bg-white text-black border-gray-300'}`}
+            className={`w-full border rounded px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 ${['minimal','lunar-cycle','poster'].includes(selectedTheme) ? 'bg-gray-900 text-white border-gray-700' : 'bg-white text-black border-gray-300'}`}
           >
             <option value="traditional">Traditional</option>
             <option value="minimal">Minimal</option>
             <option value="lunar-cycle">Lunar Cycle</option>
             <option value="poster">Poster</option>
-            <option value="poster-print">Poster (Print)</option>
+            {/* Poster (Print) removed */}
           </select>
         </div>
       </div>
@@ -282,7 +382,7 @@ export default function Home() {
       {/* {selectedCity && (
         <div className="mt-2 text-2xl font-semibold text-center">
           Moon Phase Calendar for <span className="font-bold">{selectedCity.label}</span>
-          {['poster','poster-print'].includes(selectedTheme) && dateRange && (
+          {['poster'].includes(selectedTheme) && dateRange && (
             (() => {
               const fromYear = dateRange.from.slice(0, 4);
               const toYear = dateRange.to.slice(0, 4);
@@ -309,7 +409,7 @@ export default function Home() {
       {moonPhases && moonPhases.length > 0 && (
         <>
           {/* Poster mode: wrap CalendarGrid in a ref for PDF export */}
-          {['poster','poster-print'].includes(selectedTheme) ? (
+          {['poster'].includes(selectedTheme) ? (
             <div ref={posterRef} className="w-full flex flex-col items-center">
               {/* Title always inside the grid container for all themes */}
               {selectedCity && (
@@ -360,7 +460,7 @@ export default function Home() {
               />
             </div>
           )}
-          {['poster','poster-print'].includes(selectedTheme) && (
+          {['poster'].includes(selectedTheme) && (
             <div className="flex flex-row gap-2 justify-center mt-4 mb-2">
               <button
                 onClick={() => handlePosterYearChange(-1)}

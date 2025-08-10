@@ -1,0 +1,18 @@
+Moon Phases for Melbourne, Victoria, Australia in 2025
+Showing moon phases for: 
+2025
+2025
+Lunation	New Moon	First Quarter	Full Moon	Third Quarter	Duration
+1262	 	 	7 Jan	10:56	14 Jan	09:26	22 Jan	07:30	29d 14h 09m
+1263	29 Jan	23:35	5 Feb	19:02	13 Feb	00:53	21 Feb	04:32	29d 12h 09m
+1264	28 Feb	11:44	7 Mar	03:31	14 Mar	17:54	22 Mar	22:29	29d 10h 13m
+1265	29 Mar	21:57	5 Apr	13:14	13 Apr	10:22	21 Apr	11:35	29d 8h 33m
+1266	28 Apr	05:31	4 May	23:51	13 May	02:55	20 May	21:58	29d 7h 31m
+1267	27 May	13:02	3 Jun	13:40	11 Jun	17:43	19 Jun	05:19	29d 7h 29m
+1268	25 Jun	20:31	3 Jul	05:30	11 Jul	06:36	18 Jul	10:37	29d 8h 40m
+1269	25 Jul	05:11	1 Aug	22:41	9 Aug	17:54	16 Aug	15:12	29d 10h 55m
+1270	23 Aug	16:06	31 Aug	16:25	8 Sep	04:08	14 Sep	20:32	29d 13h 48m
+1271	22 Sep	05:54	30 Sep	09:53	7 Oct	14:47	14 Oct	05:12	29d 16h 31m
+1272	21 Oct	23:25	30 Oct	03:20	6 Nov	00:19	12 Nov	16:28	29d 18h 22m
+1273	20 Nov	17:47	28 Nov	17:58	5 Dec	10:14	12 Dec	07:51	29d 18h 56m
+1274	20 Dec	12:43	28 Dec	06:09	 	 	 	 	29d 18h 09m
