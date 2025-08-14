@@ -1,6 +1,6 @@
 // Moon Phase Image Loader
-// For static hosting, load images directly from the public folder
-// Paths resolve to `/phases/moon.0001.jpg` ... `/phases/moon.0236.jpg`
+// Inline data-URI approach to avoid HTTP fetches for frames
+import { MOON_PHASE_DATA_URIS } from "../assets/phases.inline";
 
 /**
  * Get the URL for a specific moon phase frame
@@ -10,8 +10,9 @@
 export function getMoonPhaseImageUrl(frameNumber: number): string {
   // Ensure frame is within 1..236, wrap if needed
   const wrapped = ((frameNumber - 1) % 236 + 236) % 236 + 1;
-  const frameStr = String(wrapped).padStart(4, "0");
-  return `/phases/moon.${frameStr}.jpg`;
+  // frames array is 0-indexed; our frames are 1..236
+  const index = wrapped - 1;
+  return MOON_PHASE_DATA_URIS[index];
 }
 
 /**
@@ -20,10 +21,11 @@ export function getMoonPhaseImageUrl(frameNumber: number): string {
  * @returns Image URL for the corresponding moon phase
  */
 export function getMoonPhaseImageByAge(moonAgeDays: number): string {
-  // frame number = (days × 8) + 1, rounded to nearest frame
+  // Select one per day using 30 daily frames generated: index = clamp(round(days), 0..29)
   const days = Math.max(0, moonAgeDays);
-  const nearestFrame = Math.round(days * 8) + 1; // 1..236 approximately
-  return getMoonPhaseImageUrl(nearestFrame);
+  const index = Math.min(29, Math.max(0, Math.round(days)));
+  // Map day to its corresponding frame data URI
+  return MOON_PHASE_DATA_URIS[index];
 }
 
 /**
@@ -38,15 +40,15 @@ export function preloadAllMoonPhaseImages(): void {
  * Get the total number of available moon phase images
  */
 export function getMoonPhaseImageCount(): number {
-  // Fixed number of frames available
-  return 236;
+  // 30 daily frames
+  return MOON_PHASE_DATA_URIS.length || 30;
 }
 
 /**
  * Check if a specific moon phase image is available
  */
 export function hasMoonPhaseImage(frameNumber: number): boolean {
-  const frameStr = String(frameNumber).padStart(4, "0");
-  // Existence check is trivial for static public assets
-  return Number(frameStr) >= 1 && Number(frameStr) <= 236;
+  // In daily mode, index range is 1..30
+  const n = Number(frameNumber);
+  return n >= 1 && n <= MOON_PHASE_DATA_URIS.length;
 }

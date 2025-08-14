@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import type { MoonPhaseEntry } from "../types/moonPhase";
+import { MOON_VIDEO_DATA_URI } from "../assets/phases.inline";
 
 export function HourlyTimeline({ moonPhases }: { moonPhases: MoonPhaseEntry[] }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -84,7 +85,9 @@ export function HourlyTimeline({ moonPhases }: { moonPhases: MoonPhaseEntry[] })
           onTimeUpdate={handleTimeUpdate}
           onEnded={handleVideoEnd}
         >
-          <source src="/phases/moon_720p30.webm" type="video/webm" />
+          {MOON_VIDEO_DATA_URI ? (
+            <source src={MOON_VIDEO_DATA_URI} type="video/webm" />
+          ) : null}
           Your browser does not support the video tag.
         </video>
         

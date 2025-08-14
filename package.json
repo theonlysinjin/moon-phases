@@ -5,12 +5,15 @@
   "description": "Beautiful lunar phases by city with infinite scroll and a printable poster view.",
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "node scripts/verify-moon-images.js && next build",
+    "build": "node scripts/verify-moon-images.js && node scripts/generate-inline-phases.js && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
     "test:ui": "vitest",
-    "verify-images": "node scripts/verify-moon-images.js"
+    "verify-images": "node scripts/verify-moon-images.js",
+    "copy-phases": "node scripts/copy-phases.js",
+    "generate-inline-phases": "node scripts/generate-inline-phases.js",
+    "prune-phases": "node scripts/prune-unneeded-phases.js"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.3.0",
