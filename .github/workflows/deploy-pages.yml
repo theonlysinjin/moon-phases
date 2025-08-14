@@ -27,21 +27,6 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-
-      - name: Install emoji font (Noto Color Emoji)
-        run: sudo apt-get update && sudo apt-get install -y fonts-noto-color-emoji
-
-      - name: Install Python deps (Pillow)
-        run: pip install --upgrade pip pillow
-
-      - name: Generate moon phase images
-        working-directory: src/assets/phases
-        run: python image.py
-
       - name: Install Node dependencies
         run: npm ci
 
@@ -59,8 +44,31 @@ jobs:
         with:
           path: out
 
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Run unit tests (Vitest)
+        if: ${{ hashFiles('tests/**/*') != '' }}
+        run: npm run test -- tests
+
+      - name: No tests found, skipping
+        if: ${{ hashFiles('tests/**/*') == '' }}
+        run: echo "No tests found in tests/, skipping test run."
+
   deploy:
-    needs: build
+    needs: [build, test]
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -69,5 +77,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
-

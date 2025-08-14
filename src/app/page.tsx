@@ -1,14 +1,13 @@
 "use client";
 
 import { LocationSelector, CityOption } from "../components/LocationSelector";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { fetchMoonPhases } from "../utils/api";
 import type { MoonPhaseEntry } from "../types/moonPhase";
 import { useEffect } from "react";
 import { useRef } from "react";
 import { CalendarGrid } from "../components/CalendarGrid";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import { MoonPhaseImagePreloader } from "../components/MoonPhaseImagePreloader";
 
 // TODO: Refactor data state to support infinite loading (track loaded date range, append data)
 // TODO: Build full-screen, responsive calendar grid UI (Tailwind)
@@ -82,12 +81,11 @@ export default function Home() {
   const [dateRange, setDateRange] = useState<{ from: string; to: string } | null>(null); // Track loaded date range
   const observerRef = useRef<IntersectionObserver | null>(null);
   const triggerRef = useRef<HTMLDivElement | null>(null); // bottom trigger
-  const [selectedTheme, setSelectedTheme] = useState<string>("minimal");
+  const [selectedTheme, setSelectedTheme] = useState<string>("calendar");
   const [posterYear, setPosterYear] = useState<number>(new Date().getFullYear());
   const [posterData, setPosterData] = useState<Record<number, MoonPhaseEntry[]>>({});
   // Cache for non-poster themes: { [city-theme]: { [from-to]: MoonPhaseEntry[] } }
   // const [nonPosterCache, setNonPosterCache] = useState<Record<string, Record<string, MoonPhaseEntry[]>>>({}); // unused
-  const posterRef = useRef<HTMLDivElement | null>(null);
 
   // Perf ticker state
   type PerfLog = {
@@ -102,7 +100,7 @@ export default function Home() {
   };
   const [perfOpen, setPerfOpen] = useState(false);
   const [perfLogs, setPerfLogs] = useState<PerfLog[]>([]);
-  const logPerf = (
+  const logPerf = useCallback((
     city: string,
     from: string,
     to: string,
@@ -127,24 +125,26 @@ export default function Home() {
       ];
       return next.slice(0, 50);
     });
-  };
+  }, []);
 
   // Fetch more moon phases (next chunk)
   type FetchDirection = 'up' | 'down' | undefined;
-  const fetchMore = async (direction?: FetchDirection | number) => {
+  const fetchMore = useCallback(async (direction?: FetchDirection | number) => {
     if (!selectedCity) return;
+    // Prevent infinite loading for non-scrolling themes that don't use onRequestMore
+    if (selectedTheme === 'hourly-timeline') return;
     setLoading(true);
     try {
       let dateFrom: string, dateTo: string, yearToFetch: number | undefined;
-        if (['poster'].includes(selectedTheme)) {
+      if (['poster'].includes(selectedTheme)) {
         yearToFetch = typeof direction === 'number' ? direction : posterYear;
         dateFrom = `${yearToFetch}0101`;
         dateTo = `${yearToFetch}1231`;
         const cityName = selectedCity.label;
-          const t0 = performance.now();
-          const data = await fetchMoonPhases(cityName, dateFrom, dateTo);
-          const t1 = performance.now();
-          logPerf(cityName, dateFrom, dateTo, t0, t1, data.length, selectedTheme);
+        const t0 = performance.now();
+        const data = await fetchMoonPhases(cityName, dateFrom, dateTo, { resolution: selectedTheme === 'lunar-cycle' ? '3h' : 'daily' });
+        const t1 = performance.now();
+        logPerf(cityName, dateFrom, dateTo, t0, t1, data.length, selectedTheme);
         setPosterData(prev => ({ ...prev, [yearToFetch!]: data }));
         setMoonPhases(data);
         setDateRange({ from: dateFrom, to: dateTo });
@@ -164,7 +164,7 @@ export default function Home() {
           dateToObj.setDate(dateToObj.getDate() - 1);
           dateTo = dateToObj.toISOString().slice(0, 10).replace(/-/g, "");
           const t0 = performance.now();
-          const data = await fetchMoonPhases(cityName, dateFrom, dateTo);
+          const data = await fetchMoonPhases(cityName, dateFrom, dateTo, { resolution: selectedTheme === 'lunar-cycle' ? '3h' : 'daily' });
           const t1 = performance.now();
           logPerf(cityName, dateFrom, dateTo, t0, t1, data.length, selectedTheme);
           setMoonPhases((prev) => (prev ? [...prev, ...data] : data));
@@ -182,7 +182,7 @@ export default function Home() {
           fromDateObj.setDate(1); // Start at first of the month
           dateFrom = fromDateObj.toISOString().slice(0, 10).replace(/-/g, "");
           const t0 = performance.now();
-          const data = await fetchMoonPhases(cityName, dateFrom, dateTo);
+          const data = await fetchMoonPhases(cityName, dateFrom, dateTo, { resolution: selectedTheme === 'lunar-cycle' ? '3h' : 'daily' });
           const t1 = performance.now();
           logPerf(cityName, dateFrom, dateTo, t0, t1, data.length, selectedTheme);
           setMoonPhases((prev) => (prev ? [...data, ...prev] : data));
@@ -194,7 +194,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedCity, selectedTheme, dateRange, posterYear, logPerf]);
 
   // Poster mode: handle year navigation
   const handlePosterYearChange = async (delta: number) => {
@@ -208,26 +208,7 @@ export default function Home() {
     }
   };
 
-  // PDF export handler for poster
-  const handleExportPDF = async () => {
-    if (!posterRef.current) return;
-    const element = posterRef.current;
-    const canvas = await html2canvas(element, { backgroundColor: null, scale: 2 });
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-    // Calculate width/height to fit A4
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    // Scale image to fit width
-    const imgWidth = pageWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    let y = 0;
-    if (imgHeight < pageHeight) {
-      y = (pageHeight - imgHeight) / 2;
-    }
-    pdf.addImage(imgData, "PNG", 0, y, imgWidth, imgHeight);
-    pdf.save(`moon-phases-${posterYear}.pdf`);
-  };
+
 
   useEffect(() => {
     if (!moonPhases || !triggerRef.current) return;
@@ -263,15 +244,16 @@ export default function Home() {
           dateFrom = `${year}0101`;
           dateTo = `${year}1231`;
           const cityName = selectedCity.label;
+          const resolution = selectedTheme === 'hourly-timeline' ? '3h' : 'daily';
           const t0 = performance.now();
-          const data = await fetchMoonPhases(cityName, dateFrom, dateTo);
+          const data = await fetchMoonPhases(cityName, dateFrom, dateTo, { resolution });
           const t1 = performance.now();
           logPerf(cityName, dateFrom, dateTo, t0, t1, data.length, selectedTheme);
           setPosterData(prev => ({ ...prev, [year]: data })); // Merge instead of replace
           setPosterYear(year);
           setMoonPhases(data);
           setDateRange({ from: dateFrom, to: dateTo });
-        } else if (['traditional', 'minimal', 'lunar-cycle'].includes(selectedTheme)) {
+        } else if (['calendar', 'lunar-cycle'].includes(selectedTheme)) {
           // Fetch 6 months: current month + 5 months forward
           const now = new Date();
           const start = new Date(now.getFullYear(), now.getMonth(), 1); // current month
@@ -279,8 +261,9 @@ export default function Home() {
           dateFrom = start.toISOString().slice(0, 10).replace(/-/g, "");
           dateTo = end.toISOString().slice(0, 10).replace(/-/g, "");
           const cityName = selectedCity.label;
+          const resolution = selectedTheme === 'hourly-timeline' ? '3h' : 'daily';
           const t0 = performance.now();
-          const data = await fetchMoonPhases(cityName, dateFrom, dateTo);
+          const data = await fetchMoonPhases(cityName, dateFrom, dateTo, { resolution });
           const t1 = performance.now();
           logPerf(cityName, dateFrom, dateTo, t0, t1, data.length, selectedTheme);
           setMoonPhases(data);
@@ -291,8 +274,9 @@ export default function Home() {
           dateToObj.setDate(now.getDate() + 89); // 90 days including today
           dateTo = dateToObj.toISOString().slice(0, 10).replace(/-/g, "");
           const cityName = selectedCity.label;
+          const resolution = selectedTheme === 'hourly-timeline' ? '3h' : 'daily';
           const t0 = performance.now();
-          const data = await fetchMoonPhases(cityName, dateFrom, dateTo);
+          const data = await fetchMoonPhases(cityName, dateFrom, dateTo, { resolution });
           const t1 = performance.now();
           logPerf(cityName, dateFrom, dateTo, t0, t1, data.length, selectedTheme);
           setMoonPhases(data);
@@ -305,12 +289,13 @@ export default function Home() {
       }
     };
     fetchData();
-  }, [selectedCity, selectedTheme]); // <-- Remove posterData here!
+  }, [selectedCity, selectedTheme, logPerf]); // <-- Remove posterData here!
 
   return (
-    <div
-      className={`flex flex-col items-center justify-center min-h-screen p-8 gap-8 ${selectedTheme === 'traditional' ? 'bg-white text-black' : 'bg-black text-white'}`}
-    >
+    <div className={`flex flex-col items-center justify-center min-h-screen p-8 gap-8 bg-black text-white`}>
+      {/* Preload all moon phase images */}
+      <MoonPhaseImagePreloader />
+      
       {/* Perf ticker */}
       <div className="fixed bottom-4 right-4 z-50">
         <button
@@ -350,6 +335,9 @@ export default function Home() {
                 ))}
               </tbody>
             </table>
+            <div className="mt-2 pt-2 border-t border-gray-800 text-[10px] text-gray-400 leading-snug">
+              Images: <a href="https://svs.gsfc.nasa.gov/4310/" target="_blank" rel="noopener noreferrer" className="underline text-gray-300 hover:text-white">NASA&apos;s Scientific Visualization Studio</a>
+            </div>
           </div>
         )}
       </div>
@@ -359,7 +347,7 @@ export default function Home() {
           <LocationSelector
             cities={cities}
             onSelect={setSelectedCity}
-            className={`w-full border rounded px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 ${['minimal','lunar-cycle','poster'].includes(selectedTheme) ? 'bg-gray-900 text-white border-gray-700 placeholder-gray-400' : 'bg-white text-black border-gray-300'}`}
+            className={`w-full border rounded px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 ${['calendar','lunar-cycle','poster'].includes(selectedTheme) ? 'bg-gray-900 text-white border-gray-700 placeholder-gray-400' : 'bg-white text-black border-gray-300'}`}
           />
         </div>
         <div className="flex-1">
@@ -368,11 +356,11 @@ export default function Home() {
             id="theme-select"
             value={selectedTheme}
             onChange={e => setSelectedTheme(e.target.value)}
-            className={`w-full border rounded px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 ${['minimal','lunar-cycle','poster'].includes(selectedTheme) ? 'bg-gray-900 text-white border-gray-700' : 'bg-white text-black border-gray-300'}`}
+            className={`w-full border rounded px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 ${['calendar','lunar-cycle','poster'].includes(selectedTheme) ? 'bg-gray-900 text-white border-gray-700' : 'bg-white text-black border-gray-300'}`}
           >
-            <option value="traditional">Traditional</option>
-            <option value="minimal">Minimal</option>
+            <option value="calendar">Calendar</option>
             <option value="lunar-cycle">Lunar Cycle</option>
+            <option value="hourly-timeline">Hourly Timeline</option>
             <option value="poster">Poster</option>
             {/* Poster (Print) removed */}
           </select>
@@ -408,9 +396,9 @@ export default function Home() {
       {/* Calendar grid */}
       {moonPhases && moonPhases.length > 0 && (
         <>
-          {/* Poster mode: wrap CalendarGrid in a ref for PDF export */}
+          {/* Poster mode */}
           {['poster'].includes(selectedTheme) ? (
-            <div ref={posterRef} className="w-full flex flex-col items-center">
+            <div className="w-full flex flex-col items-center">
               {/* Title always inside the grid container for all themes */}
               {selectedCity && (
                 <div className="mt-2 text-2xl font-semibold text-center">
@@ -476,14 +464,10 @@ export default function Home() {
               >
                 Next Year
               </button>
-              <button
-                onClick={handleExportPDF}
-                className="w-32 px-3 py-1 text-xs rounded bg-gray-800 text-gray-200 hover:bg-gray-700 border border-gray-600 shadow"
-                disabled={loading}
-              >
-                PDF
-              </button>
+
             </div>
+            
+
           )}
           {/* TODO: Improve toast UX (e.g., add animation, auto-dismiss, error toasts) */}
         </>

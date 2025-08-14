@@ -17,3 +17,8 @@ Lunation	New Moon	First Quarter	Full Moon	Third Quarter	Duration
 1273	20 Nov	01:47	28 Nov	01:58	4 Dec	18:14	11 Dec	15:51	29d 18h 56m
 1274	19 Dec	20:43	27 Dec	14:09					29d 18h 09m
 
+
+
+
+
+

@@ -1,6 +1,7 @@
 import { Body, Illumination, MoonPhase, NextMoonQuarter, SearchMoonQuarter } from 'astronomy-engine';
 import { DateTime } from 'luxon';
 import type { MoonPhaseEntry } from '@/types/moonPhase';
+import type { FetchOptions } from '@/types/api';
 
 type CityConfig = { lat: number; lon: number; tz: string };
 
@@ -32,6 +33,15 @@ function* eachDateUtc(startUtc: Date, endUtc: Date): Generator<Date> {
   }
 }
 
+function* each3HoursUtc(startUtc: Date, endUtc: Date): Generator<Date> {
+  const d = new Date(startUtc.getTime());
+  for (;;) {
+    if (d > endUtc) return;
+    yield new Date(d.getTime());
+    d.setUTCHours(d.getUTCHours() + 3);
+  }
+}
+
 function buildPhaseName(quarterIndex: number): 'New Moon' | 'First Quarter' | 'Full Moon' | 'Last Quarter' {
   const names = ['New Moon', 'First Quarter', 'Full Moon', 'Last Quarter'] as const;
   return names[quarterIndex];
@@ -57,7 +67,12 @@ function precomputeMajorPhases(tz: string, yearStart: number, yearEnd: number) {
   return { items: sortedUtc, byLocalDate };
 }
 
-export async function generateMoonPhases(city: string, dateFrom: string, dateTo: string): Promise<MoonPhaseEntry[]> {
+export async function generateMoonPhases(
+  city: string,
+  dateFrom: string,
+  dateTo: string,
+  options?: FetchOptions
+): Promise<MoonPhaseEntry[]> {
   const cfg = CITY_MAP[city];
   if (!cfg) throw new Error(`Unsupported city: ${city}`);
   const from = parseYMD(dateFrom);
@@ -67,18 +82,20 @@ export async function generateMoonPhases(city: string, dateFrom: string, dateTo:
   const { items: majorList, byLocalDate } = precomputeMajorPhases(cfg.tz, yearStart, yearEnd);
 
   const results: MoonPhaseEntry[] = [];
-  for (const dayUtc of eachDateUtc(from, to)) {
-    const dtUtcIso = dayUtc.toISOString();
-    const illum = Illumination(Body.Moon, dayUtc);
-    const phaseAngle = MoonPhase(dayUtc); // degrees [0,360)
+  const use3h = options?.resolution === '3h';
+  const iterator = use3h ? each3HoursUtc(from, to) : eachDateUtc(from, to);
+  for (const tUtc of iterator) {
+    const dtUtcIso = tUtc.toISOString();
+    const illum = Illumination(Body.Moon, tUtc);
+    const phaseAngle = MoonPhase(tUtc); // degrees [0,360)
     const ageDays = (phaseAngle / 360) * MEAN_SYNODIC_MONTH;
     const isWaxing = phaseAngle < 180;
 
-    const localDate = DateTime.fromJSDate(dayUtc, { zone: 'utc' }).setZone(cfg.tz).toISODate()!;
+    const localDate = DateTime.fromJSDate(tUtc, { zone: 'utc' }).setZone(cfg.tz).toISODate()!;
     const majorPhaseToday = byLocalDate.get(localDate) ?? null;
 
-    // Find next major phase strictly after this day start UTC
-    const nextMajor = majorList.find(p => p.utc.getTime() > dayUtc.getTime());
+    // Find next major phase strictly after this time
+    const nextMajor = majorList.find(p => p.utc.getTime() > tUtc.getTime());
 
     results.push({
       city,
@@ -94,6 +111,38 @@ export async function generateMoonPhases(city: string, dateFrom: string, dateTo:
         date_utc: nextMajor ? DateTime.fromJSDate(nextMajor.utc, { zone: 'utc' }).toISO()! : null
       }
     });
+  }
+
+  // Ensure exact major phase timestamps are included when using 3h resolution
+  if (use3h) {
+    for (const item of majorList) {
+      const iso = DateTime.fromJSDate(item.utc, { zone: 'utc' }).toISO();
+      if (!iso) continue;
+      const exists = results.some(r => r.date_utc === iso);
+      if (!exists) {
+        const illum = Illumination(Body.Moon, item.utc);
+        const phaseAngle = MoonPhase(item.utc);
+        const ageDays = (phaseAngle / 360) * MEAN_SYNODIC_MONTH;
+        const isWaxing = phaseAngle < 180;
+        const nextMajor = majorList.find(p => p.utc.getTime() > item.utc.getTime());
+        results.push({
+          city,
+          date_utc: iso,
+          illuminated_fraction: illum.phase_fraction,
+          is_waxing: isWaxing,
+          latitude: cfg.lat,
+          longitude: cfg.lon,
+          major_phase: item.phase,
+          moon_age_days: ageDays,
+          next_major_phase: {
+            name: nextMajor ? nextMajor.phase : null,
+            date_utc: nextMajor ? DateTime.fromJSDate(nextMajor.utc, { zone: 'utc' }).toISO()! : null
+          }
+        });
+      }
+    }
+    // Sort by time
+    results.sort((a, b) => new Date(a.date_utc).getTime() - new Date(b.date_utc).getTime());
   }
 
   return results;

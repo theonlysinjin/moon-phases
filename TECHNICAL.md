@@ -3,10 +3,12 @@
 ## Features Checklist
 
 - [x] Location-based moon phase calendar (city dropdown)
-- [x] Infinite scroll for calendar data (6-month chunks)
+- [x] Infinite scroll for calendar data (6-month chunks) in Calendar and Lunar Cycle themes
 - [x] Responsive, full-screen calendar grid
-- [x] Theme support (Traditional, Minimal, Lunar Cycle, Poster)
-- [x] Poster mode: year navigation and PDF export (Poster theme only)
+- [x] Theme support: Calendar, Lunar Cycle, Hourly Timeline, Poster
+- [x] Poster mode: year navigation
+- [x] Static export (Next.js `output: export`) for GitHub Pages
+- [ ] PDF/print export for Poster
 - [ ] Integrate location search (map/geolocation)
 - [ ] Integrate with external print-on-demand services
 - [ ] Add more themes (e.g., Dark, Solarized, etc)
@@ -19,49 +21,40 @@
 ## 1. Core Features & Flow
 
 ### 1.1. Location-Based Moon Calendar
-- On first visit, user is prompted with a “Select Location” screen (city dropdown).
-- Initial city options (hardcoded):
-  - Cape Town
-  - New York
-  - London
-  - Hong Kong
-  - Melbourne
-  - San Francisco
-  - Tokyo
-- (Planned) Integrate with a map/geolocation service for broader city selection.
+- City dropdown on the home page.
+- Initial city options (UI): Cape Town, New York, London, Hong Kong, Melbourne.
+- Backend additionally supports: San Francisco, Tokyo.
+- (Planned) Integrate map/geolocation for broader city selection.
 
 ### 1.2. Moon Phase Data Integration
-- The app uses a custom Flask backend (`backend/moon_phase_api.py`) to provide moon phase data by city.
-- The backend uses the `ephem` library for astronomical calculations.
-- API supports querying by city and date range.
+- Default: client-side generation using `astronomy-engine` in `src/utils/generateMoonPhases.ts`.
+- Optional: Flask backend (`backend/moon_phase_api.py`) powered by `ephem` for REST API access.
+- The frontend currently calls `generateMoonPhases` directly via `src/utils/api.ts` and does not depend on the backend.
 
-#### API Endpoints
+#### API Endpoints (Backend)
 - `GET /moon-phase?city=London`
-  - Returns current moon phase data for the city.
+  - Current moon phase data for the city.
 - `GET /moon-phases?city=London&date_from=YYYYMMDD&date_to=YYYYMMDD`
-  - Returns daily moon phase data for the city between two dates (inclusive).
+  - Daily or hourly (by generation) moon phase data between two dates (inclusive).
 
 ##### Example Request
 ```
 GET /moon-phases?city=Cape%20Town&date_from=20250701&date_to=20250707
 ```
 
-##### Example Response
+##### Example Response (shape)
 ```json
 [
   {
     "city": "Cape Town",
-    "date_utc": "2025-07-01T00:00:00",
-    "illuminated_fraction": 0.32931910820669275,
+    "date_utc": "2025-07-01T00:00:00Z",
+    "illuminated_fraction": 0.33,
     "is_waxing": true,
     "latitude": -33.9249,
     "longitude": 18.4241,
     "major_phase": null,
-    "moon_age_days": 5.5614236111111115,
-    "next_major_phase": {
-      "date_utc": "2025-07-02T19:30:07.108865",
-      "name": "First Quarter"
-    }
+    "moon_age_days": 5.56,
+    "next_major_phase": { "name": "First Quarter", "date_utc": "2025-07-02T19:30:07Z" }
   }
 ]
 ```
@@ -78,28 +71,31 @@ GET /moon-phases?city=Cape%20Town&date_from=20250701&date_to=20250707
 
 ---
 
-## 2. Backend Architecture
+## 2. Backend Architecture (Optional)
 
-- **Language:** Python 3
-- **Framework:** Flask
-- **Astronomy Library:** ephem
-- **File:** `backend/moon_phase_api.py`
-- **Cities Supported:** Hardcoded in `CITY_COORDS` dict (see above)
-- **Endpoints:** `/moon-phase`, `/moon-phases`
-- **Deployment:** Run with `python moon_phase_api.py`
-- **CORS:** Enabled for all origins
-- **Frontend Proxy:** Can proxy to Next.js dev server if needed
+- Language: Python 3
+- Framework: Flask
+- Astronomy Library: PyEphem (`ephem`)
+- File: `backend/moon_phase_api.py`
+- Cities Supported: Hardcoded in `CITY_COORDS`
+- Endpoints: `/moon-phase`, `/moon-phases`
+- CORS: Enabled for all origins
+- Can proxy to Next.js dev server when launched with `--proxy-frontend`
 
 ---
 
 ## 3. Frontend Integration
 
-- The Next.js frontend fetches data from the Flask backend.
-- API URL may need to be configured depending on deployment (e.g., proxy or CORS).
-- Data is fetched for the selected city and date range to render the calendar grid.
-- Infinite scroll is implemented: as the user scrolls, more moon phase data is fetched and appended (6-month chunks).
-- Theme selection is available (Traditional, Minimal, Lunar Cycle, Poster).
-- Poster mode supports year navigation and PDF export.
+- Framework: Next.js 15 (React 19)
+- Data source: `src/utils/generateMoonPhases.ts` (client-side via `astronomy-engine`)
+- Entry: `src/app/page.tsx`
+- Infinite scroll: implemented for Calendar and Lunar Cycle (IntersectionObserver on bottom trigger, loads next 6 months; manual load-previous for earlier months supported via helper).
+- Themes:
+  - Calendar: month-grouped weekly grid
+  - Lunar Cycle: rows of 14-day chunks with month labels
+  - Hourly Timeline: looping video with phase overlay, hemisphere-aware orientation
+  - Poster: 12 columns (months) × 31 rows (days), with year navigation
+- Assets: `public/phases/*` at runtime; build verifies presence in `src/assets/phases`.
 
 ---
 
@@ -117,30 +113,28 @@ export type MoonPhaseEntry = {
   major_phase: string | null;
   moon_age_days: number;
   next_major_phase: {
-    name: string;
-    date_utc: string;
+    name: string | null;
+    date_utc: string | null;
   };
 };
 ```
 
 ---
 
-## 5. Component & File Structure
+## 5. Component & File Structure (selected)
 
-- `/components`
-  - `LocationSelector.tsx` (city dropdown)
-  - `CalendarGrid.tsx` (calendar grid with infinite scroll)
-- `/app`
-  - `page.tsx` (main entry, handles state, theme, infinite scroll, poster mode)
-  - `layout.tsx`, `globals.css` (global styles and layout)
-- `/types`
-  - `moonPhase.ts`
-- `/utils`
-  - `api.ts` (API calls)
-- `/assets/phases/`
-  - Moon phase images (used for visual representation)
-- `/backend`
-  - `moon_phase_api.py` (Flask backend)
+- `src/components/LocationSelector.tsx` (city dropdown)
+- `src/components/CalendarGrid.tsx` (calendar grid; renders different themes)
+- `src/components/HourlyTimeline.tsx` (video-based lunar cycle view)
+- `src/components/MoonPhaseImagePreloader.tsx` (image preload hook)
+- `src/app/page.tsx` (main entry; state, theme, infinite scroll, poster year nav)
+- `src/utils/api.ts` (facade; calls `generateMoonPhases`)
+- `src/utils/generateMoonPhases.ts` (astronomy-engine based generator)
+- `src/utils/getMoonPhaseVisual.tsx`, `src/utils/moonPhaseImageLoader.ts` (asset helpers)
+- `src/types/moonPhase.ts`, `src/types/api.ts`
+- `src/assets/phases/*` (build verification source assets)
+- `public/phases/*` (runtime-served assets)
+- `backend/moon_phase_api.py` (optional Flask backend)
 
 ---
 
@@ -150,6 +144,7 @@ export type MoonPhaseEntry = {
 - [ ] Expand city/location options (map/geolocation)
 - [ ] Enhanced design customization
 - [ ] Add more themes (e.g., Dark, Solarized)
+- [ ] Poster PDF/print export (likely via `@react-pdf/renderer` or `html2canvas` + `jspdf`)
 
 ---
 
@@ -168,9 +163,9 @@ export type MoonPhaseEntry = {
 ---
 
 ## 9. Deployment
-- Deploy frontend to Vercel (recommended) or Netlify
-- Backend can be deployed to any Python-compatible host (e.g., Heroku, Render)
-- Use environment variables for API URLs if needed
+- Frontend: Vercel (recommended) or GitHub Pages (static export configured)
+- Backend: any Python-compatible host (Heroku, Render) if used
+- Environment variables: `NEXT_BASE_PATH`, `NEXT_ASSET_PREFIX` used for Pages
 
 ---
 
@@ -179,4 +174,4 @@ export type MoonPhaseEntry = {
 
 ---
 
-For more, see [README.md] and [copilot-instructions.md]. 
+For more, see [README.md]. 
