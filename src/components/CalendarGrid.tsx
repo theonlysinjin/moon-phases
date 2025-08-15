@@ -104,11 +104,11 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ moonPhases, theme, t
     );
   }
   if (theme === "lunar-cycle") {
-    // Lunar Cycle: flat grid, 14 columns (half lunar cycle), all moon phases in order, ultra-compact rows
-    // Split into rows of 14
+    // Lunar Cycle: flat grid, 15 columns (half lunar cycle), all moon phases in order, ultra-compact rows
+    // Split into rows of 15
     const rows: MoonPhaseEntry[][] = [];
-    for (let i = 0; i < moonPhases.length; i += 14) {
-      rows.push(moonPhases.slice(i, i + 14));
+    for (let i = 0; i < moonPhases.length; i += 15) {
+      rows.push(moonPhases.slice(i, i + 15));
     }
     let lastMonth: number | null = null;
     return (

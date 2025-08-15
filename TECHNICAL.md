@@ -8,9 +8,8 @@
 - [x] Theme support: Calendar, Lunar Cycle, Hourly Timeline, Poster
 - [x] Poster mode: year navigation
 - [x] Static export (Next.js `output: export`) for GitHub Pages
-- [ ] PDF/print export for Poster
+- [ ] Poster export
 - [ ] Integrate location search (map/geolocation)
-- [ ] Integrate with external print-on-demand services
 - [ ] Add more themes (e.g., Dark, Solarized, etc)
 - [ ] User accounts for saving favorites
 - [ ] Expand city/location options
@@ -139,12 +138,11 @@ export type MoonPhaseEntry = {
 ---
 
 ## 6. Future Technical Roadmap
-- [ ] Integrate print-on-demand service
 - [ ] Add user accounts for saving favorites
 - [ ] Expand city/location options (map/geolocation)
 - [ ] Enhanced design customization
 - [ ] Add more themes (e.g., Dark, Solarized)
-- [ ] Poster PDF/print export (likely via `@react-pdf/renderer` or `html2canvas` + `jspdf`)
+- [ ] Poster export (likely via `@react-pdf/renderer` or `html2canvas` + `jspdf`)
 
 ---
 

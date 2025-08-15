@@ -142,7 +142,7 @@ export default function Home() {
         dateTo = `${yearToFetch}1231`;
         const cityName = selectedCity.label;
         const t0 = performance.now();
-        const data = await fetchMoonPhases(cityName, dateFrom, dateTo, { resolution: selectedTheme === 'lunar-cycle' ? '3h' : 'daily' });
+        const data = await fetchMoonPhases(cityName, dateFrom, dateTo, { resolution: selectedTheme === 'hourly-timeline' ? '3h' : 'daily' });
         const t1 = performance.now();
         logPerf(cityName, dateFrom, dateTo, t0, t1, data.length, selectedTheme);
         setPosterData(prev => ({ ...prev, [yearToFetch!]: data }));
@@ -164,7 +164,7 @@ export default function Home() {
           dateToObj.setDate(dateToObj.getDate() - 1);
           dateTo = dateToObj.toISOString().slice(0, 10).replace(/-/g, "");
           const t0 = performance.now();
-          const data = await fetchMoonPhases(cityName, dateFrom, dateTo, { resolution: selectedTheme === 'lunar-cycle' ? '3h' : 'daily' });
+          const data = await fetchMoonPhases(cityName, dateFrom, dateTo, { resolution: selectedTheme === 'hourly-timeline' ? '3h' : 'daily' });
           const t1 = performance.now();
           logPerf(cityName, dateFrom, dateTo, t0, t1, data.length, selectedTheme);
           setMoonPhases((prev) => (prev ? [...prev, ...data] : data));
@@ -182,7 +182,7 @@ export default function Home() {
           fromDateObj.setDate(1); // Start at first of the month
           dateFrom = fromDateObj.toISOString().slice(0, 10).replace(/-/g, "");
           const t0 = performance.now();
-          const data = await fetchMoonPhases(cityName, dateFrom, dateTo, { resolution: selectedTheme === 'lunar-cycle' ? '3h' : 'daily' });
+          const data = await fetchMoonPhases(cityName, dateFrom, dateTo, { resolution: selectedTheme === 'hourly-timeline' ? '3h' : 'daily' });
           const t1 = performance.now();
           logPerf(cityName, dateFrom, dateTo, t0, t1, data.length, selectedTheme);
           setMoonPhases((prev) => (prev ? [...data, ...prev] : data));
@@ -362,7 +362,7 @@ export default function Home() {
             <option value="lunar-cycle">Lunar Cycle</option>
             <option value="hourly-timeline">Hourly Timeline</option>
             <option value="poster">Poster</option>
-            {/* Poster (Print) removed */}
+            {/* Poster extras removed */}
           </select>
         </div>
       </div>

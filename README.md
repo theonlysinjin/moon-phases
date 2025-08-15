@@ -8,9 +8,9 @@
 - [x] Theme support: Calendar, Lunar Cycle, Hourly Timeline, Poster
 - [x] Poster mode: year navigation
 - [x] Static export ready (GitHub Pages compatible)
-- [ ] PDF/print export for Poster
+- [ ] PDF export for Poster
 - [ ] Integrate location search (map/geolocation)
-- [ ] Integrate with external print-on-demand services
+ 
 - [ ] Add more themes (e.g., Dark, Solarized, etc)
 - [ ] User accounts for saving favorites
 - [ ] Expand city/location options

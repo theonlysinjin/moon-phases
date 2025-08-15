@@ -46,3 +46,6 @@ src/assets/phases.generated/
 src/assets/phases/*.png
 media/frames/
 media/frames-720p/
+media/frames-cropped/
+# media/phases.generated/
+# media/phases.real/

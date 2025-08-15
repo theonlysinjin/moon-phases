@@ -2,7 +2,7 @@
   "name": "moon-calendar",
   "version": "0.1.0",
   "private": true,
-  "description": "Beautiful lunar phases by city with infinite scroll and a printable poster view.",
+  "description": "Beautiful lunar phases by city with infinite scroll and a poster view.",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "node scripts/verify-moon-images.js && node scripts/generate-inline-phases.js && next build",
@@ -11,9 +11,9 @@
     "test": "vitest run",
     "test:ui": "vitest",
     "verify-images": "node scripts/verify-moon-images.js",
-    "copy-phases": "node scripts/copy-phases.js",
     "generate-inline-phases": "node scripts/generate-inline-phases.js",
-    "prune-phases": "node scripts/prune-unneeded-phases.js"
+    "prune-phases": "node scripts/prune-unneeded-phases.js",
+    "poster:md": "node scripts/generate-poster-markdown.js"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.3.0",

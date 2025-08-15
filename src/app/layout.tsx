@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     default: "Moon Calendar",
     template: "%s — Moon Calendar",
   },
-  description: "Beautiful lunar phases by city with infinite scroll and a printable poster view.",
+  description: "Beautiful lunar phases by city with infinite scroll and a poster view.",
   applicationName: "Moon Calendar",
   keywords: ["moon", "lunar phases", "calendar", "astronomy", "poster", "nextjs"],
   authors: [{ name: "Moon Calendar" }],
@@ -27,13 +27,13 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Moon Calendar",
-    description: "Beautiful lunar phases by city with infinite scroll and a printable poster view.",
+    description: "Beautiful lunar phases by city with infinite scroll and a poster view.",
     type: "website",
   },
   twitter: {
     card: "summary",
     title: "Moon Calendar",
-    description: "Beautiful lunar phases by city with infinite scroll and a printable poster view.",
+    description: "Beautiful lunar phases by city with infinite scroll and a poster view.",
   },
 };
 
