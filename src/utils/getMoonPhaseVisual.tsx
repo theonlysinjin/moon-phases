@@ -29,9 +29,8 @@ export function getMoonPhaseVisual(
   // Get the moon phase image URL using the optimized loader
   const imgSrc = getMoonPhaseImageByAge(entry.moon_age_days);
 
-  // Southern hemisphere should view with lunar south up (rotate 180deg)
-  const isSouthernHemisphere = entry.latitude < 0;
-  const rotationStyle = isSouthernHemisphere ? "rotate(180deg)" : "none";
+  // Use the calculated rotation angle based on actual moon orientation
+  const rotationStyle = `rotate(${entry.rotation_angle}deg)`;
 
   // Only add background for traditional theme
   if (theme === "traditional") {

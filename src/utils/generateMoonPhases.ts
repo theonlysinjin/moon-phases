@@ -2,6 +2,7 @@ import { Body, Illumination, MoonPhase, NextMoonQuarter, SearchMoonQuarter } fro
 import { DateTime } from 'luxon';
 import type { MoonPhaseEntry } from '@/types/moonPhase';
 import type { FetchOptions } from '@/types/api';
+import { calculateMoonRotationAngle } from './moonOrientation';
 
 type CityConfig = { lat: number; lon: number; tz: string };
 
@@ -97,6 +98,9 @@ export async function generateMoonPhases(
     // Find next major phase strictly after this time
     const nextMajor = majorList.find(p => p.utc.getTime() > tUtc.getTime());
 
+    // Calculate moon rotation angle based on location and time
+    const rotationAngle = calculateMoonRotationAngle(cfg.lat, cfg.lon, tUtc);
+
     results.push({
       city,
       date_utc: dtUtcIso,
@@ -106,6 +110,7 @@ export async function generateMoonPhases(
       longitude: cfg.lon,
       major_phase: majorPhaseToday,
       moon_age_days: ageDays,
+      rotation_angle: rotationAngle,
       next_major_phase: {
         name: nextMajor ? nextMajor.phase : null,
         date_utc: nextMajor ? DateTime.fromJSDate(nextMajor.utc, { zone: 'utc' }).toISO()! : null
@@ -125,6 +130,7 @@ export async function generateMoonPhases(
         const ageDays = (phaseAngle / 360) * MEAN_SYNODIC_MONTH;
         const isWaxing = phaseAngle < 180;
         const nextMajor = majorList.find(p => p.utc.getTime() > item.utc.getTime());
+        const rotationAngle = calculateMoonRotationAngle(cfg.lat, cfg.lon, item.utc);
         results.push({
           city,
           date_utc: iso,
@@ -134,6 +140,7 @@ export async function generateMoonPhases(
           longitude: cfg.lon,
           major_phase: item.phase,
           moon_age_days: ageDays,
+          rotation_angle: rotationAngle,
           next_major_phase: {
             name: nextMajor ? nextMajor.phase : null,
             date_utc: nextMajor ? DateTime.fromJSDate(nextMajor.utc, { zone: 'utc' }).toISO()! : null

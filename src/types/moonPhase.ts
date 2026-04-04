@@ -7,6 +7,7 @@ export type MoonPhaseEntry = {
   longitude: number;
   major_phase: string | null;
   moon_age_days: number;
+  rotation_angle: number;
   next_major_phase: {
     name: string | null;
     date_utc: string | null;

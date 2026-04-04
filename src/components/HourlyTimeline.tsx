@@ -8,9 +8,7 @@ export function HourlyTimeline({ moonPhases }: { moonPhases: MoonPhaseEntry[] })
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [currentPhase, setCurrentPhase] = useState('New Moon');
-
-  // Determine if we should rotate the video based on the first moon phase entry's latitude
-  const shouldRotateForSouthernHemisphere = moonPhases.length > 0 && moonPhases[0].latitude < 0;
+  const [rotationAngle, setRotationAngle] = useState(0);
 
   // Get current phase based on video progress
   const getCurrentPhase = (progress: number) => {
@@ -28,14 +26,39 @@ export function HourlyTimeline({ moonPhases }: { moonPhases: MoonPhaseEntry[] })
     }
   }, []);
 
+  // Calculate rotation angle based on video progress
+  const calculateRotationAngle = useCallback((progress: number) => {
+    if (moonPhases.length === 0) return 0;
+    
+    // Map video progress (0-1) to moon age (0-29.53 days)
+    const MEAN_SYNODIC_MONTH = 29.530588;
+    const moonAge = progress * MEAN_SYNODIC_MONTH;
+    
+    // Find the closest moon phase entry based on moon age
+    let closestEntry = moonPhases[0];
+    let minDiff = Math.abs(closestEntry.moon_age_days - moonAge);
+    
+    for (const entry of moonPhases) {
+      const diff = Math.abs(entry.moon_age_days - moonAge);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestEntry = entry;
+      }
+    }
+    
+    return closestEntry.rotation_angle;
+  }, [moonPhases]);
+
   // Handle video time updates
   const handleTimeUpdate = useCallback(() => {
     if (videoRef.current && isVideoLoaded) {
       const progress = videoRef.current.currentTime / videoRef.current.duration;
       const phase = getCurrentPhase(progress);
       setCurrentPhase(phase);
+      const angle = calculateRotationAngle(progress);
+      setRotationAngle(angle);
     }
-  }, [isVideoLoaded]);
+  }, [isVideoLoaded, calculateRotationAngle]);
 
   // Handle video end - loop
   const handleVideoEnd = useCallback(() => {
@@ -69,12 +92,12 @@ export function HourlyTimeline({ moonPhases }: { moonPhases: MoonPhaseEntry[] })
           </div>
         )}
         
-        {/* Video with conditional rotation based on hemisphere */}
+        {/* Video with dynamic rotation based on actual moon orientation */}
         <video
           ref={videoRef}
           className="w-full h-full object-contain"
           style={{
-            transform: shouldRotateForSouthernHemisphere ? 'scaleX(-1) scaleY(-1)' : 'none'
+            transform: `rotate(${rotationAngle}deg)`
           }}
           autoPlay
           muted
@@ -104,11 +127,6 @@ export function HourlyTimeline({ moonPhases }: { moonPhases: MoonPhaseEntry[] })
         </div>
         <div className="text-sm text-gray-400">
           Lunar Cycle Animation
-          {shouldRotateForSouthernHemisphere && (
-            <span className="block text-xs text-gray-500 mt-1">
-              Southern Hemisphere View
-            </span>
-          )}
         </div>
       </div>
     </div>
