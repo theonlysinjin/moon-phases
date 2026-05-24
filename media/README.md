@@ -1,4 +1,7 @@
-# Downlad and Transform Media
-## Download
-Download the frames from https://svs.gsfc.nasa.gov/4310/
-- Run `download.sh`
+# Media download scripts
+
+See **[docs/assets/media-sources.md](../docs/assets/media-sources.md)** for how to download and install NASA phase frames.
+
+```bash
+./download.sh
+```

@@ -109,12 +109,12 @@ export function MoonPhase({ entry }: { entry: MoonPhaseEntry }) {
 
 ## Documentation Structure
 
-- **README.md**: Project overview, features, setup, and backend API documentation.
+- **README.md**: Short project entry point and quick start.
+- **docs/**: Technical documentation — start at [docs/README.md](../docs/README.md).
 - **copilot-instructions.md** (this file): Coding conventions, Copilot usage, and developer workflow.
-- **TECHNICAL.md**: Technical specifications, backend API, and data models.
 
 ## How to Start a New Feature
-- Review the relevant sections in TECHNICAL.md
+- Review the relevant sections in `docs/` (overview, architecture, data model, themes)
 - Create or update types/interfaces first (see above)
 - Scaffold the component in /components or page in /app
 - Use Tailwind CSS for all UI styling and theming
@@ -134,7 +134,7 @@ export function MoonPhase({ entry }: { entry: MoonPhaseEntry }) {
 - Forgetting to type component props
 - Not using Tailwind for layout/design/theming
 - Overcomplicating types (keep them minimal)
-- Not checking TECHNICAL.md for requirements
+- Not checking `docs/` for requirements
 - Not matching the backend data shape in frontend types
 
 ## How to Ask Copilot for Help
@@ -153,8 +153,8 @@ export function MoonPhase({ entry }: { entry: MoonPhaseEntry }) {
 - `/utils`: API calls and helpers
 - `/assets/phases/`: Moon phase images
 - `/backend`: Flask backend for moon phase data
-- `TECHNICAL.md`: Specs, architecture, and data models
-- `README.md`: Project overview and backend API
+- `docs/`: Architecture, data model, themes, deployment, roadmap
+- `README.md`: Project overview and quick start
 
 ---
 

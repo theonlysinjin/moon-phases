@@ -2,46 +2,17 @@ import { Body, Illumination, MoonPhase, NextMoonQuarter, SearchMoonQuarter } fro
 import { DateTime } from 'luxon';
 import type { MoonPhaseEntry } from '@/types/moonPhase';
 import type { FetchOptions } from '@/types/api';
+import { DEFAULT_VIEW_HOUR } from '@/types/api';
+import { CITY_BY_LABEL } from '@/config/cities';
 import { calculateMoonRotationAngle } from './moonOrientation';
-
-type CityConfig = { lat: number; lon: number; tz: string };
-
-const CITY_MAP: Record<string, CityConfig> = {
-  'Cape Town': { lat: -33.9249, lon: 18.4241, tz: 'Africa/Johannesburg' },
-  'New York': { lat: 40.7128, lon: -74.0060, tz: 'America/New_York' },
-  'London': { lat: 51.5074, lon: -0.1278, tz: 'Europe/London' },
-  'Hong Kong': { lat: 22.3193, lon: 114.1694, tz: 'Asia/Hong_Kong' },
-  'Melbourne': { lat: -37.8136, lon: 144.9631, tz: 'Australia/Melbourne' },
-  'San Francisco': { lat: 37.7749, lon: -122.4194, tz: 'America/Los_Angeles' },
-  'Tokyo': { lat: 35.6895, lon: 139.6917, tz: 'Asia/Tokyo' }
-};
+import {
+  eachLocalDay,
+  eachLocal3Hours,
+  localYearFromYmd,
+  utcToLocalDate,
+} from './time';
 
 const MEAN_SYNODIC_MONTH = 29.530588; // days
-
-function parseYMD(ymd: string): Date {
-  const y = Number(ymd.slice(0, 4));
-  const m = Number(ymd.slice(4, 6)) - 1;
-  const d = Number(ymd.slice(6, 8));
-  return new Date(Date.UTC(y, m, d, 0, 0, 0));
-}
-
-function* eachDateUtc(startUtc: Date, endUtc: Date): Generator<Date> {
-  const d = new Date(startUtc.getTime());
-  for (;;) {
-    if (d > endUtc) return;
-    yield new Date(d.getTime());
-    d.setUTCDate(d.getUTCDate() + 1);
-  }
-}
-
-function* each3HoursUtc(startUtc: Date, endUtc: Date): Generator<Date> {
-  const d = new Date(startUtc.getTime());
-  for (;;) {
-    if (d > endUtc) return;
-    yield new Date(d.getTime());
-    d.setUTCHours(d.getUTCHours() + 3);
-  }
-}
 
 function buildPhaseName(quarterIndex: number): 'New Moon' | 'First Quarter' | 'Full Moon' | 'Last Quarter' {
   const names = ['New Moon', 'First Quarter', 'Full Moon', 'Last Quarter'] as const;
@@ -56,16 +27,55 @@ function precomputeMajorPhases(tz: string, yearStart: number, yearEnd: number) {
     while (mq.time.date.getUTCFullYear() === year) {
       const phase = buildPhaseName(mq.quarter);
       const utc = mq.time.date;
-      const localDate = DateTime.fromJSDate(utc, { zone: 'utc' }).setZone(tz).toISODate()!;
+      const localDate = utcToLocalDate(utc.toISOString(), tz);
       items.push({ phase, utc, localDate });
       mq = NextMoonQuarter(mq);
     }
   }
-  // Build quick lookups
   const byLocalDate = new Map<string, string>();
   for (const i of items) byLocalDate.set(i.localDate, i.phase);
   const sortedUtc = items.slice().sort((a, b) => a.utc.getTime() - b.utc.getTime());
   return { items: sortedUtc, byLocalDate };
+}
+
+function buildEntry(
+  city: string,
+  cfg: { lat: number; lon: number; tz: string },
+  tUtc: Date,
+  localDate: string,
+  majorList: { phase: string; utc: Date }[],
+  byLocalDate: Map<string, string>,
+  majorPhaseOverride?: string | null
+): MoonPhaseEntry {
+  const illum = Illumination(Body.Moon, tUtc);
+  const phaseAngle = MoonPhase(tUtc);
+  const ageDays = (phaseAngle / 360) * MEAN_SYNODIC_MONTH;
+  const isWaxing = phaseAngle < 180;
+  const majorPhaseToday =
+    majorPhaseOverride !== undefined
+      ? majorPhaseOverride
+      : (byLocalDate.get(localDate) ?? null);
+  const nextMajor = majorList.find((p) => p.utc.getTime() > tUtc.getTime());
+  const rotationAngle = calculateMoonRotationAngle(cfg.lat, cfg.lon, tUtc);
+
+  return {
+    city,
+    date_utc: tUtc.toISOString(),
+    date_local: localDate,
+    illuminated_fraction: illum.phase_fraction,
+    is_waxing: isWaxing,
+    latitude: cfg.lat,
+    longitude: cfg.lon,
+    major_phase: majorPhaseToday,
+    moon_age_days: ageDays,
+    rotation_angle: rotationAngle,
+    next_major_phase: {
+      name: nextMajor ? nextMajor.phase : null,
+      date_utc: nextMajor
+        ? DateTime.fromJSDate(nextMajor.utc, { zone: 'utc' }).toISO()!
+        : null,
+    },
+  };
 }
 
 export async function generateMoonPhases(
@@ -74,85 +84,42 @@ export async function generateMoonPhases(
   dateTo: string,
   options?: FetchOptions
 ): Promise<MoonPhaseEntry[]> {
-  const cfg = CITY_MAP[city];
+  const cfg = CITY_BY_LABEL[city];
   if (!cfg) throw new Error(`Unsupported city: ${city}`);
-  const from = parseYMD(dateFrom);
-  const to = parseYMD(dateTo);
-  const yearStart = from.getUTCFullYear();
-  const yearEnd = to.getUTCFullYear();
+
+  const viewHour = options?.viewHour ?? DEFAULT_VIEW_HOUR;
+  const yearStart = localYearFromYmd(dateFrom, cfg.tz);
+  const yearEnd = localYearFromYmd(dateTo, cfg.tz);
   const { items: majorList, byLocalDate } = precomputeMajorPhases(cfg.tz, yearStart, yearEnd);
 
   const results: MoonPhaseEntry[] = [];
   const use3h = options?.resolution === '3h';
-  const iterator = use3h ? each3HoursUtc(from, to) : eachDateUtc(from, to);
-  for (const tUtc of iterator) {
-    const dtUtcIso = tUtc.toISOString();
-    const illum = Illumination(Body.Moon, tUtc);
-    const phaseAngle = MoonPhase(tUtc); // degrees [0,360)
-    const ageDays = (phaseAngle / 360) * MEAN_SYNODIC_MONTH;
-    const isWaxing = phaseAngle < 180;
+  const iterator = use3h
+    ? eachLocal3Hours(dateFrom, dateTo, cfg.tz)
+    : eachLocalDay(dateFrom, dateTo, cfg.tz, viewHour);
 
-    const localDate = DateTime.fromJSDate(tUtc, { zone: 'utc' }).setZone(cfg.tz).toISODate()!;
-    const majorPhaseToday = byLocalDate.get(localDate) ?? null;
-
-    // Find next major phase strictly after this time
-    const nextMajor = majorList.find(p => p.utc.getTime() > tUtc.getTime());
-
-    // Calculate moon rotation angle based on location and time
-    const rotationAngle = calculateMoonRotationAngle(cfg.lat, cfg.lon, tUtc);
-
-    results.push({
-      city,
-      date_utc: dtUtcIso,
-      illuminated_fraction: illum.phase_fraction,
-      is_waxing: isWaxing,
-      latitude: cfg.lat,
-      longitude: cfg.lon,
-      major_phase: majorPhaseToday,
-      moon_age_days: ageDays,
-      rotation_angle: rotationAngle,
-      next_major_phase: {
-        name: nextMajor ? nextMajor.phase : null,
-        date_utc: nextMajor ? DateTime.fromJSDate(nextMajor.utc, { zone: 'utc' }).toISO()! : null
-      }
-    });
+  for (const { localDate, utc: tUtc } of iterator) {
+    results.push(
+      buildEntry(city, cfg, tUtc, localDate, majorList, byLocalDate)
+    );
   }
 
-  // Ensure exact major phase timestamps are included when using 3h resolution
   if (use3h) {
     for (const item of majorList) {
       const iso = DateTime.fromJSDate(item.utc, { zone: 'utc' }).toISO();
       if (!iso) continue;
-      const exists = results.some(r => r.date_utc === iso);
+      const exists = results.some((r) => r.date_utc === iso);
       if (!exists) {
-        const illum = Illumination(Body.Moon, item.utc);
-        const phaseAngle = MoonPhase(item.utc);
-        const ageDays = (phaseAngle / 360) * MEAN_SYNODIC_MONTH;
-        const isWaxing = phaseAngle < 180;
-        const nextMajor = majorList.find(p => p.utc.getTime() > item.utc.getTime());
-        const rotationAngle = calculateMoonRotationAngle(cfg.lat, cfg.lon, item.utc);
-        results.push({
-          city,
-          date_utc: iso,
-          illuminated_fraction: illum.phase_fraction,
-          is_waxing: isWaxing,
-          latitude: cfg.lat,
-          longitude: cfg.lon,
-          major_phase: item.phase,
-          moon_age_days: ageDays,
-          rotation_angle: rotationAngle,
-          next_major_phase: {
-            name: nextMajor ? nextMajor.phase : null,
-            date_utc: nextMajor ? DateTime.fromJSDate(nextMajor.utc, { zone: 'utc' }).toISO()! : null
-          }
-        });
+        const localDate = utcToLocalDate(iso, cfg.tz);
+        results.push(
+          buildEntry(city, cfg, item.utc, localDate, majorList, byLocalDate, item.phase)
+        );
       }
     }
-    // Sort by time
-    results.sort((a, b) => new Date(a.date_utc).getTime() - new Date(b.date_utc).getTime());
+    results.sort(
+      (a, b) => new Date(a.date_utc).getTime() - new Date(b.date_utc).getTime()
+    );
   }
 
   return results;
 }
-
-
