@@ -12,6 +12,7 @@ import {
   rotationAtSynodicProgress,
   sampleUtcAtSynodicProgress,
 } from "../utils/synodicRotation";
+import { MOON_CIRCLE_CLIP } from "../utils/moonImageStyle";
 import { interpolateRotation, utcToLocalDate, utcToLocalTime } from "../utils/time";
 
 function getCurrentPhase(progress: number): string {
@@ -210,7 +211,7 @@ export function HourlyTimeline({
         <video
           ref={videoRef}
           className="w-full h-full object-contain"
-          style={{ transform }}
+          style={{ ...MOON_CIRCLE_CLIP, transform }}
           autoPlay
           muted
           loop

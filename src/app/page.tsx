@@ -217,6 +217,9 @@ export default function Home() {
   useEffect(() => {
     if (!selectedCity) return;
 
+    viewHourSkipInitialRef.current = true;
+    setMoonPhases(null);
+
     const fetchData = async () => {
       setLoading(true);
       try {
@@ -259,11 +262,6 @@ export default function Home() {
 
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- posterData intentionally excluded
-  }, [selectedCitySlug, selectedTheme]);
-
-  useEffect(() => {
-    viewHourSkipInitialRef.current = true;
-    setMoonPhases(null);
   }, [selectedCitySlug, selectedTheme]);
 
   // Regenerate when viewHour changes (daily themes only)
@@ -309,7 +307,7 @@ export default function Home() {
     selectedTheme === "hourly-timeline" && selectedCity != null;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-8 gap-8 bg-black text-white">
+    <div className="flex flex-col items-center justify-start min-h-screen p-8 gap-8 bg-black text-white">
       <MoonPhaseImagePreloader />
 
       <div className="fixed bottom-4 right-4 z-50">

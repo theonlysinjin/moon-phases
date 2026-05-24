@@ -273,8 +273,8 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
     const days = Array.from({ length: 31 }, (_, i) => i + 1);
 
     return (
-      <div className="w-full overflow-x-auto mt-8">
-        <table className="border-collapse mx-auto">
+      <div className="w-fit max-w-none mx-auto mt-8">
+        <table className="border-collapse">
           <thead>
             <tr>
               <th className="w-8 h-8" />
