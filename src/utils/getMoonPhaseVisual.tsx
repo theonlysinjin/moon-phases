@@ -4,6 +4,7 @@ import React from "react";
 import Image from "next/image";
 import type { MoonPhaseEntry } from "../types/moonPhase";
 import { getMoonPhaseImageByAge } from "./moonPhaseImageLoader";
+import { MOON_CIRCLE_CLIP } from "./moonImageStyle";
 
 export function getMoonPhaseVisual(
   entry: MoonPhaseEntry,
@@ -29,9 +30,8 @@ export function getMoonPhaseVisual(
   // Get the moon phase image URL using the optimized loader
   const imgSrc = getMoonPhaseImageByAge(entry.moon_age_days);
 
-  // Southern hemisphere should view with lunar south up (rotate 180deg)
-  const isSouthernHemisphere = entry.latitude < 0;
-  const rotationStyle = isSouthernHemisphere ? "rotate(180deg)" : "none";
+  // Use the calculated rotation angle based on actual moon orientation
+  const rotationStyle = `rotate(${entry.rotation_angle}deg)`;
 
   // Only add background for traditional theme
   if (theme === "traditional") {
@@ -55,6 +55,7 @@ export function getMoonPhaseVisual(
           width={Math.max(1, Math.round(pixelSize * 0.92))}
           height={Math.max(1, Math.round(pixelSize * 0.92))}
           style={{
+            ...MOON_CIRCLE_CLIP,
             width: "92%",
             height: "92%",
             display: "block",
@@ -75,7 +76,13 @@ export function getMoonPhaseVisual(
       alt="Moon phase"
       width={pixelSize}
       height={pixelSize}
-      style={{ width: size, height: size, transform: rotationStyle, objectFit: "contain" }}
+      style={{
+        ...MOON_CIRCLE_CLIP,
+        width: size,
+        height: size,
+        transform: rotationStyle,
+        objectFit: "contain",
+      }}
       className={className}
       priority={false}
       loading="lazy"

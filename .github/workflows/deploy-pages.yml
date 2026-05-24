@@ -60,12 +60,7 @@ jobs:
         run: npm ci
 
       - name: Run unit tests (Vitest)
-        if: ${{ hashFiles('tests/**/*') != '' }}
-        run: npm run test -- tests
-
-      - name: No tests found, skipping
-        if: ${{ hashFiles('tests/**/*') == '' }}
-        run: echo "No tests found in tests/, skipping test run."
+        run: npm run test
 
   deploy:
     needs: [build, test]

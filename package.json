@@ -13,7 +13,10 @@
     "verify-images": "node scripts/verify-moon-images.js",
     "generate-inline-phases": "node scripts/generate-inline-phases.js",
     "prune-phases": "node scripts/prune-unneeded-phases.js",
-    "poster:md": "node scripts/generate-poster-markdown.js"
+    "poster:md": "node scripts/generate-poster-markdown.js",
+    "poster:csv": "node scripts/generate-poster-csv.js",
+    "fetch:timeanddate": "node scripts/fetch-timeanddate-phases.js",
+    "spot-check": "npx tsx scripts/spot-check-year.ts"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.3.0",
