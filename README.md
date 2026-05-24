@@ -13,7 +13,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-Pick a **city** and **theme** from the dropdowns. Calendar and Lunar Cycle scroll to load more months; Poster loads a full year with year navigation.
+Pick a **city** and **theme** from the dropdowns. Use the **viewing time** slider (daily themes) or **parallactic rotation** checkbox (Hourly Timeline). Calendar and Lunar Cycle scroll to load more months; Poster loads a full year with year navigation.
 
 ## Documentation
 
@@ -32,8 +32,10 @@ Full docs live in **[docs/](./docs/README.md)**:
 |---------|---------|
 | `npm run dev` | Development server (Turbopack) |
 | `npm run build` | Verify images, generate inline assets, static export → `out/` |
-| `npm run test` | Vitest |
+| `npm run test` | Vitest (`test/`) |
 | `npm run poster:md` / `poster:csv` | CLI poster tables |
+| `npm run fetch:timeanddate` | Fetch reference phase dates from timeanddate.com |
+| `npm run spot-check` | Cross-year phase spot-check against fixtures |
 
 ## Optional backend
 

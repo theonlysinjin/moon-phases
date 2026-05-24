@@ -2,7 +2,16 @@
 
 How to obtain and prepare moon phase media from NASA.
 
-## Download
+## Two asset locations
+
+| Directory | Contents | Used by |
+|-----------|----------|---------|
+| `src/assets/phases/` | 236 NASA frames (`moon.0001.jpg` …) + `moon_720p30.webm` | **App build** — verified and embedded at build time |
+| `media/phases/` | Numbered reference images (`1.jpg` … `28.jpg`) + `image.py` | **Reference only** — not wired into the Next.js build |
+
+The app runtime reads from build-generated `src/assets/phases.inline.ts`, not from either directory directly.
+
+## Download NASA frames
 
 Frames come from [NASA SVS 4310](https://svs.gsfc.nasa.gov/4310/).
 
@@ -13,31 +22,41 @@ cd media
 ./download.sh
 ```
 
-Scripts and helpers in `media/`:
+This downloads 5760×3240 TIFs into `media/frames/` (gitignored). You then need to convert, crop, and copy the processed JPGs into `src/assets/phases/` with NASA naming (`moon.0001.jpg` … `moon.0236.jpg`).
+
+Scripts in `media/`:
 
 | File | Purpose |
 |------|---------|
-| `download.sh` | Fetch frames from NASA |
-| `phases/image.py` | Transform / processing helper |
+| `download.sh` | Fetch TIF frames from NASA |
+| `phases/image.py` | Batch JPG → PNG conversion for reference assets |
 
-After download, copy or symlink processed assets into:
+Additional processing scripts live under `scripts/`:
 
-- `src/assets/phases/` — verified at build time
-- `public/phases/` — served at runtime (`/phases/moon.0001.jpg`, etc.)
+| Script | Purpose |
+|--------|---------|
+| `round-moon-frame.js` | Crop/round individual frames |
+| `verify-moon-images.js` | Verify the 236-frame set before build |
+| `generate-inline-phases.js` | Embed 30 daily frames + video into TypeScript |
 
-## Expected layout
+## Expected build layout
 
 ```
 src/assets/phases/
   moon.0001.jpg … moon.0236.jpg
   moon_720p30.webm          # Hourly Timeline video
 
-public/phases/              # mirror for runtime serving
-  moon.0001.jpg …
-  moon_720p30.webm
+src/assets/phases.inline.ts   # generated — do not edit
+  MOON_PHASE_DATA_URIS[]      # 30 daily frame data URIs
+  MOON_VIDEO_DATA_URI         # embedded WebM
 ```
 
-Run `npm run verify-images` after adding or updating files.
+After adding or updating source files:
+
+```bash
+npm run verify-images
+npm run generate-inline-phases   # or npm run build
+```
 
 ## Related
 

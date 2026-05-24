@@ -22,9 +22,9 @@ Environment variables (CI):
 Workflow: `.github/workflows/deploy-pages.yml`
 
 1. Trigger: push to `main` or manual dispatch
-2. `npm run verify-images` — checks `src/assets/phases/`
-3. `npm run build` — also runs `generate-inline-phases.js`, then `next build`
-4. Upload and deploy `./out`
+2. `npm run build` — runs `verify-moon-images.js`, `generate-inline-phases.js`, then `next build`
+3. Upload and deploy `./out`
+4. Parallel **test** job runs `npm run test` (Vitest, `test/` directory)
 
 Enable Pages in repo settings with source **GitHub Actions**.
 

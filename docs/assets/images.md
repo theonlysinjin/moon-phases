@@ -4,33 +4,54 @@ How phase images are stored, mapped, verified, and loaded at runtime.
 
 ## Overview
 
-The app uses **236** NASA-derived moon phase JPGs (`moon.0001.jpg` … `moon.0236.jpg`) plus a lunar-cycle WebM for the Hourly Timeline theme.
+The app uses **236** NASA-derived moon phase JPGs (`moon.0001.jpg` … `moon.0236.jpg`) as the source set, plus a lunar-cycle WebM for the Hourly Timeline theme.
 
-- **Source (build verification):** `src/assets/phases/`
-- **Runtime (served):** `public/phases/`
+| Stage | Location | Role |
+|-------|----------|------|
+| **Source (build input)** | `src/assets/phases/` | 236 JPGs + `moon_720p30.webm`; verified at build |
+| **Runtime (bundled)** | `src/assets/phases.inline.ts` | 30 daily frame data URIs + video data URI (generated) |
+
+There is no `public/phases/` directory — static export embeds images as data URIs so the app works on GitHub Pages without extra asset fetches.
+
 - **Attribution:** [NASA Scientific Visualization Studio](https://svs.gsfc.nasa.gov/4310/)
 
 See [Media sources](./media-sources.md) for downloading and preparing frames.
 
 ## Frame mapping
 
-Moon age (days since new moon) selects the image:
+Build time selects 30 frames from the 236-frame set (every 8th frame, days 0–29):
 
 ```ts
-const nearestFrame = Math.round(moon_age_days * 8) + 1; // clamped to 1..236
+// scripts/generate-inline-phases.js
+const dailyIndices = Array.from({ length: 30 }, (_, d) => 1 + d * 8);
 ```
 
-Implemented in `src/utils/moonPhaseImageLoader.ts`. Rendered with optional rotation in `src/utils/getMoonPhaseVisual.tsx` using `entry.rotation_angle`.
+Runtime maps moon age to one of those 30 frames:
+
+```ts
+// src/utils/moonPhaseImageLoader.ts
+const index = Math.min(29, Math.max(0, Math.round(moon_age_days)));
+return MOON_PHASE_DATA_URIS[index];
+```
+
+Poster/CLI tools that reference the full 236-frame set use `fullSetFrame()` in `src/utils/moonFrameMapping.ts`:
+
+```ts
+return 1 + dailyFrameIndex(moonAgeDays) * 8; // clamped 1..233
+```
+
+Rendered with optional rotation in `src/utils/getMoonPhaseVisual.tsx` using `entry.rotation_angle`.
 
 ## Pipeline components
 
 | Piece | File | Role |
 |-------|------|------|
-| Image loader | `src/utils/moonPhaseImageLoader.ts` | Age → frame → path |
+| Image loader | `src/utils/moonPhaseImageLoader.ts` | Age → inline data URI |
+| Frame mapping | `src/utils/moonFrameMapping.ts` | Age → daily index / full-set frame |
 | Visual helper | `src/utils/getMoonPhaseVisual.tsx` | React `<Image>` + rotation |
-| Preloader | `src/components/MoonPhaseImagePreloader.tsx` | Warm cache on app init |
+| Preloader | `src/components/MoonPhaseImagePreloader.tsx` | No-op with inline URIs |
 | Build verify | `scripts/verify-moon-images.js` | Fail build if frames missing |
-| Inline video | `scripts/generate-inline-phases.js` | Data URI for static Hourly Timeline |
+| Inline embed | `scripts/generate-inline-phases.js` | Data URIs for static export |
 | Prune | `scripts/prune-unneeded-phases.js` | Remove unused frames |
 
 ## Build integration
@@ -40,14 +61,15 @@ npm run verify-images          # manual check
 npm run build                  # verify → inline phases → next build
 ```
 
-`next.config.ts` sets `images.unoptimized: true` for static export and adds webpack rules for JPG/WebM assets.
+`next.config.ts` sets `images.unoptimized: true` for static export.
 
 ## Approximate sizes
 
 | Asset | Size (approx.) |
 |-------|----------------|
-| 236 JPG frames | ~19 MB total (~82 KB each) |
-| Lunar cycle WebM | ~0.85 MB |
+| 236 JPG frames (source) | ~19 MB total (~82 KB each) |
+| 30 inline JPG data URIs | ~4.5 MB in `phases.inline.ts` |
+| Lunar cycle WebM (inline) | ~0.85 MB |
 
 ## Troubleshooting
 
@@ -59,13 +81,11 @@ npm run build                  # verify → inline phases → next build
 
 **Slow loads**
 
-1. Preloader should run on first paint — check network tab
-2. Static export bundles paths under `public/phases/` — confirm `basePath` in CI if on GitHub Pages
+1. First load parses the large `phases.inline.ts` bundle — this is expected for static hosting
+2. Confirm `basePath` / `assetPrefix` env vars in CI if deploying to GitHub Pages subpaths
 
 ## Future improvements
 
 - WebP / compression
 - Progressive loading for very large ranges
 - CDN for global distribution
-
-Moved from root `MOON_IMAGE_OPTIMIZATION.md`; details may drift from code — prefer source files when in doubt.

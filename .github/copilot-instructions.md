@@ -1,161 +1,123 @@
 # Copilot Instructions for Moon Calendar
 
-This project uses **TypeScript** and **React** (with Next.js) for the frontend, and a **Flask (Python)** backend for moon phase data. The backend provides a REST API that returns detailed moon phase information by city and date.
+Next.js 15 + TypeScript frontend that generates moon phase data **client-side** via `astronomy-engine`. An optional Flask backend exists but is **not used by the UI**.
 
 ## Coding Conventions
 
 - **TypeScript:**
-  - Use types and interfaces for props and data models, matching the backend response shape.
+  - Use types and interfaces for props and data models.
   - Prefer `type` for simple shapes, `interface` for components/objects.
   - Use `any` only as a last resort.
 - **React:**
-  - Use functional components (`function MyComponent() { ... }`).
-  - Use hooks (e.g., `useState`, `useEffect`) for state and side effects.
+  - Functional components with hooks (`useState`, `useEffect`, `useCallback`, etc.).
   - Keep components small and focused.
 - **Styling:**
-  - Use Tailwind CSS utility classes for layout and design, including theming (e.g., bg-black text-white for dark/minimal themes).
-  - Keep print styles in mind (e.g., `@media print`).
-  - Ensure responsive design for all components.
+  - Tailwind CSS utility classes for layout and design.
+  - Dark themes use `bg-black text-white` for calendar/lunar-cycle/poster controls.
 
-## Backend API
+## Core data model
 
-- The backend is in `backend/moon_phase_api.py` (Flask + ephem).
-- Endpoints:
-  - `GET /moon-phase?city=London` (current day)
-  - `GET /moon-phases?city=London&date_from=YYYYMMDD&date_to=YYYYMMDD` (date range)
-- Cities are hardcoded in the backend; to add more, edit the `CITY_COORDS` dict.
-- Supported cities: Cape Town, New York, London, Hong Kong, Melbourne, San Francisco, Tokyo
+All moon data flows through `MoonPhaseEntry`:
 
-### Example Response (`/moon-phases`):
-```json
-[
-  {
-    "city": "Cape Town",
-    "date_utc": "2025-07-01T00:00:00",
-    "illuminated_fraction": 0.32931910820669275,
-    "is_waxing": true,
-    "latitude": -33.9249,
-    "longitude": 18.4241,
-    "major_phase": null,
-    "moon_age_days": 5.5614236111111115,
-    "next_major_phase": {
-      "date_utc": "2025-07-02T19:30:07.108865",
-      "name": "First Quarter"
-    }
-  }
-]
-```
-
-### TypeScript Type
 ```ts
 export type MoonPhaseEntry = {
   city: string;
-  date_utc: string;
+  date_utc: string;       // ISO UTC — astronomy source of truth
+  date_local: string;     // YYYY-MM-DD in city TZ — display/grouping
   illuminated_fraction: number;
   is_waxing: boolean;
   latitude: number;
   longitude: number;
   major_phase: string | null;
   moon_age_days: number;
+  rotation_angle: number; // parallactic angle in degrees
   next_major_phase: {
-    name: string;
-    date_utc: string;
+    name: string | null;
+    date_utc: string | null;
   };
+};
+```
+
+Cities are defined in `src/config/cities.ts` (label, slug, lat, lon, IANA tz).
+
+Fetch options in `src/types/api.ts`:
+
+```ts
+export type FetchOptions = {
+  resolution?: 'daily' | '3h';
+  viewHour?: number;  // 0–23, default 21
 };
 ```
 
 ## File & Component Structure
 
-- Place components in `/components`.
-  - `LocationSelector.tsx` (city dropdown)
-  - `CalendarGrid.tsx` (calendar grid with infinite scroll)
-- Main app logic in `/app/page.tsx` (handles state, theme, infinite scroll, poster mode)
-- Types and interfaces in `/types`.
-- Utilities/helpers in `/utils`.
-- Moon phase images in `/assets/phases/`.
-- Backend code in `/backend`.
+| Path | Purpose |
+|------|---------|
+| `src/app/page.tsx` | Main orchestration — city, theme, viewHour, infinite scroll, poster cache |
+| `src/components/LocationSelector.tsx` | City dropdown |
+| `src/components/CalendarGrid.tsx` | Theme router (calendar, lunar-cycle, poster) |
+| `src/components/HourlyTimeline.tsx` | Video lunar cycle + optional parallactic rotation |
+| `src/components/TimeOfDaySlider.tsx` | Viewing-time slider (0–23 local hour) |
+| `src/config/cities.ts` | City list |
+| `src/types/` | `MoonPhaseEntry`, `FetchOptions` |
+| `src/utils/generateMoonPhases.ts` | Core astronomy generator |
+| `src/utils/moonOrientation.ts` | Parallactic rotation angle |
+| `src/utils/time.ts` | Local date arithmetic, UTC conversion |
+| `src/utils/api.ts` | Facade — calls `generateMoonPhases` (no HTTP) |
+| `src/utils/getMoonPhaseVisual.tsx` | Entry → rotated moon image |
+| `src/assets/phases/` | Source images (236 JPGs + WebM) |
+| `src/assets/phases.inline.ts` | Generated data URIs for static export |
+| `backend/moon_phase_api.py` | Optional Flask API (not used by UI) |
+| `test/` | Vitest tests |
+| `docs/` | Technical documentation |
 
-## Copilot Prompting Tips
+## Documentation
 
-- **Be explicit:** When starting a new file or component, describe what you want (e.g., "Create a CalendarGrid component with infinite scroll and theme support").
-- **Type-first:** Define the type/interface for your data before generating logic. Use the `MoonPhaseEntry` type above for moon data.
-- **Iterate:** Let Copilot scaffold, then refine and add types as needed.
-- **Ask for examples:** Copilot can generate sample data, API calls, and more.
-- **Reference features:** Mention if your component should support themes, infinite scroll, or other features from the checklist.
-- **Mention poster mode, PDF export, and year navigation if relevant.**
+- **README.md** — short entry point and quick start
+- **docs/** — architecture, data model, themes, deployment, roadmap
+- **This file** — coding conventions and Copilot workflow
 
-## Example: Minimal TypeScript Component
-
-```tsx
-import React from 'react';
-import type { MoonPhaseEntry } from '../types/moonPhase';
-
-export function MoonPhase({ entry }: { entry: MoonPhaseEntry }) {
-  return (
-    <div className="moon-phase">
-      <span>{entry.date_utc}</span>
-      <span>{entry.major_phase ?? '—'}</span>
-    </div>
-  );
-}
-```
-
-## General Advice
-
-- Keep types simple and focused on what matters for UI/data.
-- Use Copilot to generate repetitive code, but always review and refine.
-- Don’t hesitate to ask Copilot for help with types, hooks, or API integration.
-- Use Tailwind for all layout, theming, and responsive design.
-
-## Documentation Structure
-
-- **README.md**: Short project entry point and quick start.
-- **docs/**: Technical documentation — start at [docs/README.md](../docs/README.md).
-- **copilot-instructions.md** (this file): Coding conventions, Copilot usage, and developer workflow.
+Start at [docs/README.md](../docs/README.md) for full technical docs.
 
 ## How to Start a New Feature
-- Review the relevant sections in `docs/` (overview, architecture, data model, themes)
-- Create or update types/interfaces first (see above)
-- Scaffold the component in /components or page in /app
-- Use Tailwind CSS for all UI styling and theming
-- Write minimal, clear types for all props and data
-- Test locally before submitting a PR
-- Reference the features checklist to ensure consistency
+
+1. Review relevant `docs/` sections (overview, architecture, data model, themes)
+2. Create or update types/interfaces first
+3. Add compute logic in `src/utils/` (pure functions, testable)
+4. Wire into `page.tsx` or a component
+5. Use Tailwind CSS for UI
+6. Add Vitest tests in `test/` when behaviour is non-trivial
+7. Run `npm run test` before submitting a PR
 
 ## Review Checklist (for PRs)
-- [ ] All new code uses TypeScript types/interfaces
-- [ ] Components are functional and use hooks
-- [ ] Tailwind CSS classes are used for styling and theming
+
+- [ ] TypeScript types for all props and data
+- [ ] Functional components with hooks
+- [ ] Tailwind CSS for styling
 - [ ] No unused variables or imports
-- [ ] Code is readable and commented where needed
-- [ ] All tests (if any) pass
+- [ ] `npm run test` passes
+- [ ] Docs updated if behaviour or structure changed
 
 ## Common Pitfalls
-- Forgetting to type component props
-- Not using Tailwind for layout/design/theming
-- Overcomplicating types (keep them minimal)
-- Not checking `docs/` for requirements
-- Not matching the backend data shape in frontend types
 
-## How to Ask Copilot for Help
-- "Create a LocationSelector component with a dropdown for cities."
-- "Generate a TypeScript type for a moon phase entry."
-- "Add Tailwind classes for a responsive grid layout."
-- "Show me how to fetch data from an API in Next.js."
-- "Add theme support to my CalendarGrid component."
-- "Implement infinite scroll for my calendar."
-- "Add poster mode with year navigation and PDF export."
+- Forgetting `date_local` vs `date_utc` — grid cells group by local date
+- Assuming images come from `public/` — runtime uses inline data URIs from `phases.inline.ts`
+- Adding cities only to the backend — update `src/config/cities.ts` for UI
+- Using hemisphere flip instead of `rotation_angle` for moon orientation
 
 ## Where to Find Things
-- `/components`: UI components (e.g., LocationSelector, CalendarGrid)
-- `/app`: Main app logic (page.tsx)
-- `/types`: TypeScript types and interfaces
-- `/utils`: API calls and helpers
-- `/assets/phases/`: Moon phase images
-- `/backend`: Flask backend for moon phase data
-- `docs/`: Architecture, data model, themes, deployment, roadmap
-- `README.md`: Project overview and quick start
+
+- `src/components/` — UI components
+- `src/app/` — pages and layout
+- `src/config/` — city configuration
+- `src/types/` — TypeScript types
+- `src/utils/` — astronomy, time, image helpers
+- `src/assets/phases/` — source moon images
+- `scripts/` — build, poster, and validation scripts
+- `test/` — Vitest tests and timeanddate fixtures
+- `docs/` — technical documentation
+- `backend/` — optional Flask API
 
 ---
 
-Happy coding! 🚀 
+Happy coding!

@@ -10,6 +10,8 @@ An optional Flask backend exists but is **not wired to the UI** — the frontend
 |-------|------|
 | **City picker** | Choose from Cape Town, New York, London, Hong Kong, Melbourne |
 | **Theme picker** | Calendar, Lunar Cycle, Hourly Timeline, or Poster |
+| **Viewing time slider** | Set the local hour (0–23, default 9pm) used for daily themes |
+| **Parallactic rotation** | Hourly Timeline checkbox — slow rotation matched to observer lat/lon |
 | **Infinite scroll** | Calendar and Lunar Cycle load 6-month chunks as you scroll |
 | **Poster year nav** | Poster loads a full year; prev/next year buttons |
 | **Perf ticker** | Small overlay showing generation time per fetch (dev aid) |
@@ -32,7 +34,7 @@ The optional Flask backend is a parallel compute path (ring 1) that mirrors the 
 | Styling | Tailwind CSS 4 |
 | Astronomy | `astronomy-engine` (client), `ephem` (optional backend) |
 | Timezones | Luxon |
-| Tests | Vitest |
+| Tests | Vitest (`test/`) |
 | Deploy | Static export → GitHub Pages |
 
 ## Related docs

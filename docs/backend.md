@@ -32,7 +32,7 @@ Moon phase entries between two dates (inclusive).
 GET /moon-phases?city=Cape%20Town&date_from=20250701&date_to=20250707
 ```
 
-Response shape largely matches [Data model](./data-model.md) with additional fields such as `date_local` and new-moon boundary helpers. `next_major_phase` may be `null` depending on the query window.
+Response shape largely matches [Data model](./data-model.md) with additional fields such as `date_local` and new-moon boundary helpers. `next_major_phase` may be `null` depending on the query window. The backend does **not** include `rotation_angle` (parallactic orientation is frontend-only).
 
 ## Supported cities
 
@@ -41,7 +41,7 @@ Hardcoded in `CITY_COORDS` / `CITY_TIMEZONES`:
 - Cape Town, New York, London, Hong Kong, Melbourne
 - San Francisco, Tokyo (backend only — not in the UI dropdown)
 
-To add a city, update both the backend dicts and `CITY_MAP` in `generateMoonPhases.ts` (and the UI list in `page.tsx`).
+To add a city to the UI, update `src/config/cities.ts` and the backend dicts if you want API parity.
 
 ## CORS
 

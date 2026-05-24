@@ -30,8 +30,8 @@ flowchart TB
 
     subgraph Assets["Assets"]
         Loader["moonPhaseImageLoader"]
-        Images["public/phases/*.jpg"]
-        Visual --> Loader --> Images
+        Inline["phases.inline.ts"]
+        Visual --> Loader --> Inline
     end
 
     Page -->|"fetchMoonPhases(city, from, to, { viewHour })"| API
@@ -46,13 +46,17 @@ flowchart TB
    - `astronomy-engine`: illumination, phase angle, major phases
    - `moonOrientation.ts`: parallactic rotation at that UTC instant
    - Set `date_local` for grouping
-4. **Results stored** — `MoonPhaseEntry[]` in React state; poster years cached by `{year}-{viewHour}`.
+4. **Results stored** — `MoonPhaseEntry[]` in React state; poster years cached by `{citySlug}-{year}-{viewHour}`.
 5. **`CalendarGrid` renders** — Groups cells by `date_local`, not UTC date.
-6. **Each cell** — `getMoonPhaseVisual(entry)` → frame from `moon_age_days` + `rotate(entry.rotation_angle)`.
+6. **Each cell** — `getMoonPhaseVisual(entry)` → daily frame from `moon_age_days` + CSS `rotate(entry.rotation_angle)`.
 
 ## Viewing-time slider
 
-Changing `viewHour` debounces (~150ms) and regenerates the current date range. Hidden for Hourly Timeline (theme is already time-resolved).
+Changing `viewHour` debounces (~150ms) and regenerates the current date range. Hidden for Hourly Timeline (that theme uses the embedded video instead of daily grid data).
+
+## Hourly Timeline (separate path)
+
+When theme is `hourly-timeline`, `CalendarGrid` renders `HourlyTimeline` directly. The video comes from `MOON_VIDEO_DATA_URI` in build-generated `phases.inline.ts`. With **Parallactic rotation** enabled, `synodicRotation.ts` and `moonOrientation.ts` drive a smoothed rotation overlay synced to synodic progress; `viewHour` sets the synodic anchor time.
 
 ## Infinite scroll
 
@@ -63,7 +67,7 @@ Uses city-local month arithmetic via `time.ts` when appending or prepending 6-mo
 | Theme | Sampling |
 |-------|----------|
 | Calendar, Lunar Cycle, Poster | Daily at `viewHour` local |
-| Hourly Timeline | 3h from local midnight + exact major phases |
+| Hourly Timeline | 3h from local midnight + exact major phases (for grid-adjacent features; video is independent) |
 
 ## Related
 

@@ -61,17 +61,20 @@ export type FetchOptions = {
 ```
 
 - **`daily`** — one entry per local calendar day at `viewHour`.
-- **`3h`** — every 3 hours from local midnight; used by Hourly Timeline.
+- **`3h`** — every 3 hours from local midnight; used when fetching grid data while Hourly Timeline is active.
 
 `dateFrom` / `dateTo` (`YYYYMMDD`) are **local calendar bounds** in the city's timezone.
 
 ## Image frame mapping
 
+At runtime the app uses **30 daily frames** embedded as data URIs in `phases.inline.ts`. Build time selects every 8th frame from the 236-frame NASA set:
+
 ```ts
-const nearestFrame = Math.round(moon_age_days * 8) + 1; // clamped to 1..236
+// Build: frame number = (day × 8) + 1 for days 0..29
+// Runtime: index = clamp(round(moon_age_days), 0..29)
 ```
 
-See [Moon images](./assets/images.md).
+See `src/utils/moonFrameMapping.ts` and [Moon images](./assets/images.md).
 
 ## Example (daily, New York, 9pm local)
 
