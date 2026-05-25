@@ -26,6 +26,7 @@ const CSV_HEADER = [
   'full_set_frame',
   'major_phase',
   'rotation_angle',
+  'bright_limb_angle',
   'latitude',
   'longitude',
 ];
@@ -103,6 +104,7 @@ async function buildCsv(
       fullSetFrame(e.moon_age_days),
       e.major_phase ?? '',
       e.rotation_angle.toFixed(2),
+      e.bright_limb_angle.toFixed(2),
       e.latitude,
       e.longitude,
     ]);

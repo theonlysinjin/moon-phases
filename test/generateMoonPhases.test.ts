@@ -13,6 +13,8 @@ describe('generateMoonPhases', () => {
     expect(entries[0].date_utc).toBe('2025-07-02T01:00:00.000Z');
     expect(entries[0].rotation_angle).toBeGreaterThanOrEqual(0);
     expect(entries[0].rotation_angle).toBeLessThan(360);
+    expect(entries[0].bright_limb_angle).toBeGreaterThanOrEqual(0);
+    expect(entries[0].bright_limb_angle).toBeLessThan(360);
   });
 
   it('different viewHour changes UTC instant and rotation', async () => {

@@ -4,7 +4,7 @@ import type { MoonPhaseEntry } from '@/types/moonPhase';
 import type { FetchOptions } from '@/types/api';
 import { DEFAULT_VIEW_HOUR } from '@/types/api';
 import type { LocationConfig } from '@/config/cities';
-import { calculateMoonRotationAngle } from './moonOrientation';
+import { calculateMoonOrientationAngles } from './moonOrientation';
 import {
   eachLocalDay,
   eachLocal3Hours,
@@ -56,7 +56,7 @@ function buildEntry(
       ? majorPhaseOverride
       : (byLocalDate.get(localDate) ?? null);
   const nextMajor = majorList.find((p) => p.utc.getTime() > tUtc.getTime());
-  const rotationAngle = calculateMoonRotationAngle(cfg.lat, cfg.lon, tUtc);
+  const orientation = calculateMoonOrientationAngles(cfg.lat, cfg.lon, tUtc);
 
   return {
     city,
@@ -68,7 +68,8 @@ function buildEntry(
     longitude: cfg.lon,
     major_phase: majorPhaseToday,
     moon_age_days: ageDays,
-    rotation_angle: rotationAngle,
+    rotation_angle: orientation.parallactic_angle,
+    bright_limb_angle: orientation.bright_limb_angle,
     next_major_phase: {
       name: nextMajor ? nextMajor.phase : null,
       date_utc: nextMajor
