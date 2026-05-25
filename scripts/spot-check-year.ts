@@ -4,7 +4,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { CITIES } from '../src/config/cities';
+import { CITIES, presetByLabel } from '../src/config/cities';
 import { generateMoonPhases } from '../src/utils/generateMoonPhases';
 import { getMajorMoonPhasesAstronomyEngine } from '../src/app/moonPhaseMath';
 import { DEFAULT_VIEW_HOUR } from '../src/types/api';
@@ -129,7 +129,7 @@ async function spotCheckCity(slug: string, label: string, timeZone: string) {
     }
   }
 
-  const entries = await generateMoonPhases(label, `${year}0101`, `${year}1231`, {
+  const entries = await generateMoonPhases(presetByLabel(label), `${year}0101`, `${year}1231`, {
     viewHour: DEFAULT_VIEW_HOUR,
   });
   const byDate = new Map(entries.map((e) => [e.date_local, e]));

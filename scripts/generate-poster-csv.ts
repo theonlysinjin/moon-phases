@@ -77,10 +77,15 @@ function csvRow(cells: unknown[]): string {
   return cells.map(escapeCsvCell).join(',') + '\n';
 }
 
-async function buildCsv(year: number, city: string, viewHour: number) {
+async function buildCsv(
+  year: number,
+  city: string,
+  viewHour: number,
+  cfg: (typeof CITIES)[number]
+) {
   const dateFrom = `${year}0101`;
   const dateTo = `${year}1231`;
-  const entries = await generateMoonPhases(city, dateFrom, dateTo, { viewHour });
+  const entries = await generateMoonPhases(cfg, dateFrom, dateTo, { viewHour });
 
   let out = csvRow(CSV_HEADER);
   for (const e of entries) {
@@ -106,8 +111,8 @@ async function buildCsv(year: number, city: string, viewHour: number) {
 }
 
 async function main() {
-  const { year, city, viewHour } = parseArgs(process.argv);
-  process.stdout.write(await buildCsv(year, city, viewHour));
+  const { year, city, viewHour, cfg } = parseArgs(process.argv);
+  process.stdout.write(await buildCsv(year, city, viewHour, cfg));
 }
 
 main().catch((err) => {

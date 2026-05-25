@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { generateMoonPhases } from '../src/utils/generateMoonPhases';
 import { DEFAULT_VIEW_HOUR } from '../src/types/api';
 import { dailyFrameIndex, fullSetFrame } from '../src/utils/moonFrameMapping';
+import { presetByLabel } from '../src/config/cities';
 import {
   VALIDATION_CITIES,
   loadTimeAndDateFixture,
@@ -29,7 +30,7 @@ describe.each(VALIDATION_CITIES)(
 
     it('major_phase is set on the same local calendar day as timeanddate', async () => {
       const entries = await generateMoonPhases(
-        label,
+        presetByLabel(label),
         `${year}0101`,
         `${year}1231`,
         { viewHour: DEFAULT_VIEW_HOUR }
@@ -45,7 +46,7 @@ describe.each(VALIDATION_CITIES)(
 
     it('daily_frame_index and full_set_frame match moon_age_days', async () => {
       const entries = await generateMoonPhases(
-        label,
+        presetByLabel(label),
         `${year}0101`,
         `${year}1231`,
         { viewHour: DEFAULT_VIEW_HOUR }
@@ -60,7 +61,7 @@ describe.each(VALIDATION_CITIES)(
 
     it('major phase days have sensible illumination for phase type', async () => {
       const entries = await generateMoonPhases(
-        label,
+        presetByLabel(label),
         `${year}0101`,
         `${year}1231`,
         { viewHour: DEFAULT_VIEW_HOUR }
@@ -86,7 +87,7 @@ describe.each(VALIDATION_CITIES)(
 
 describe('generateMoonPhases daily sample (Cape Town spot check)', () => {
   it('2025-01-07 first quarter day matches timeanddate and poster CSV frame mapping', async () => {
-    const entries = await generateMoonPhases('Cape Town', '20250107', '20250107');
+    const entries = await generateMoonPhases(presetByLabel('Cape Town'), '20250107', '20250107');
     expect(entries).toHaveLength(1);
     const e = entries[0];
     expect(e.date_local).toBe('2025-01-07');

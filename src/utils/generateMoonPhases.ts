@@ -3,7 +3,7 @@ import { DateTime } from 'luxon';
 import type { MoonPhaseEntry } from '@/types/moonPhase';
 import type { FetchOptions } from '@/types/api';
 import { DEFAULT_VIEW_HOUR } from '@/types/api';
-import { CITY_BY_LABEL } from '@/config/cities';
+import type { LocationConfig } from '@/config/cities';
 import { calculateMoonRotationAngle } from './moonOrientation';
 import {
   eachLocalDay,
@@ -79,24 +79,24 @@ function buildEntry(
 }
 
 export async function generateMoonPhases(
-  city: string,
+  location: LocationConfig,
   dateFrom: string,
   dateTo: string,
   options?: FetchOptions
 ): Promise<MoonPhaseEntry[]> {
-  const cfg = CITY_BY_LABEL[city];
-  if (!cfg) throw new Error(`Unsupported city: ${city}`);
+  const { label: city, lat, lon, tz } = location;
+  const cfg = { lat, lon, tz };
 
   const viewHour = options?.viewHour ?? DEFAULT_VIEW_HOUR;
-  const yearStart = localYearFromYmd(dateFrom, cfg.tz);
-  const yearEnd = localYearFromYmd(dateTo, cfg.tz);
-  const { items: majorList, byLocalDate } = precomputeMajorPhases(cfg.tz, yearStart, yearEnd);
+  const yearStart = localYearFromYmd(dateFrom, tz);
+  const yearEnd = localYearFromYmd(dateTo, tz);
+  const { items: majorList, byLocalDate } = precomputeMajorPhases(tz, yearStart, yearEnd);
 
   const results: MoonPhaseEntry[] = [];
   const use3h = options?.resolution === '3h';
   const iterator = use3h
-    ? eachLocal3Hours(dateFrom, dateTo, cfg.tz)
-    : eachLocalDay(dateFrom, dateTo, cfg.tz, viewHour);
+    ? eachLocal3Hours(dateFrom, dateTo, tz)
+    : eachLocalDay(dateFrom, dateTo, tz, viewHour);
 
   for (const { localDate, utc: tUtc } of iterator) {
     results.push(
@@ -110,7 +110,7 @@ export async function generateMoonPhases(
       if (!iso) continue;
       const exists = results.some((r) => r.date_utc === iso);
       if (!exists) {
-        const localDate = utcToLocalDate(iso, cfg.tz);
+        const localDate = utcToLocalDate(iso, tz);
         results.push(
           buildEntry(city, cfg, item.utc, localDate, majorList, byLocalDate, item.phase)
         );

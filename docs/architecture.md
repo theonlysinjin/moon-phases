@@ -7,7 +7,7 @@ High-level map of how the repo is organized.
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Presentation          src/components/                  │
-│  LocationSelector, CalendarGrid, HourlyTimeline, …      │
+│  CitySearch, CalendarGrid, HourlyTimeline, …            │
 ├─────────────────────────────────────────────────────────┤
 │  Orchestration         src/app/page.tsx                 │
 │  city, theme, viewHour, infinite scroll, poster cache   │
@@ -32,7 +32,8 @@ Optional (not used by UI):  backend/moon_phase_api.py
 | `src/app/page.tsx` | Main entry — state, fetching, theme switching, infinite scroll |
 | `src/app/layout.tsx` | Root layout, fonts, globals |
 | `src/config/cities.ts` | City list — label, slug, lat/lon, IANA timezone |
-| `src/components/LocationSelector.tsx` | City dropdown |
+| `src/components/CitySearch.tsx` | City search combobox + geolocation |
+| `src/utils/geocoding.ts` | Open-Meteo search, Nominatim reverse, browser TZ |
 | `src/components/CalendarGrid.tsx` | Theme router — calendar, lunar-cycle, poster layouts |
 | `src/components/HourlyTimeline.tsx` | Video-based lunar cycle view with optional parallactic rotation |
 | `src/components/TimeOfDaySlider.tsx` | Viewing-time control (0–23 local hour) |
