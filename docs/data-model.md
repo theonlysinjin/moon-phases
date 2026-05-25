@@ -27,6 +27,7 @@ export type MoonPhaseEntry = {
   major_phase: string | null;
   moon_age_days: number;
   rotation_angle: number;
+  bright_limb_angle: number;
   next_major_phase: {
     name: string | null;
     date_utc: string | null;
@@ -46,7 +47,8 @@ export type MoonPhaseEntry = {
 | `latitude`, `longitude` | Observer coordinates |
 | `major_phase` | Name if this **local** calendar day is a quarter/new/full, else `null` |
 | `moon_age_days` | Drives image frame selection |
-| `rotation_angle` | Parallactic angle at `date_utc` for observer lat/lon |
+| `rotation_angle` | Parallactic angle **q** at `date_utc` (UI/CSS disk tilt on age-based assets) |
+| `bright_limb_angle` | **θ = pa − q** at `date_utc`: Sun direction clockwise from zenith at the Moon — sky view for posters |
 | `next_major_phase` | Next major phase after this UTC instant |
 
 ## Fetch options

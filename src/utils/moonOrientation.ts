@@ -1,66 +1,99 @@
 import { Body, Equator, SiderealTime, Observer } from 'astronomy-engine';
 
-/**
- * Calculate the parallactic angle (rotation angle) for the moon at a given location and time.
- * This angle represents how the moon should be rotated to match its actual orientation in the sky.
- * 
- * @param latitude Observer's latitude in degrees (positive = north, negative = south)
- * @param longitude Observer's longitude in degrees (positive = east, negative = west)
- * @param date Date and time (UTC) for which to calculate the rotation angle
- * @returns Rotation angle in degrees (0-360)
- */
-export function calculateMoonRotationAngle(
-  latitude: number,
-  longitude: number,
-  date: Date
-): number {
-  // Create observer object (height = 0 for sea level)
-  const observer = new Observer(latitude, longitude, 0);
+const DEG = Math.PI / 180;
 
-  // Get moon's equatorial coordinates (RA and Dec)
-  // Equator(body, date, observer, ofdate, aberration)
-  // ofdate=false means use J2000 coordinates, aberration=true means correct for light travel time
-  const equ = Equator(Body.Moon, date, observer, false, true);
-  const ra = equ.ra; // Right ascension in hours
-  const dec = equ.dec; // Declination in degrees
+export type MoonOrientationAngles = {
+	/** Parallactic angle q (degrees, 0–360). Disk / axis tilt in the sky. */
+	parallactic_angle: number;
+	/** Bright-limb angle θ = pa − q (degrees, 0–360). Sun direction clockwise from zenith at the Moon. */
+	bright_limb_angle: number;
+};
 
-  // Convert RA from hours to degrees
-  const raDegrees = ra * 15; // 1 hour = 15 degrees
-
-  // Calculate local sidereal time (LST) in degrees
-  // SiderealTime returns Greenwich Mean Sidereal Time (GMST) in hours
-  const gmst = SiderealTime(date); // Returns GMST in hours
-  // Convert to local sidereal time: LST = GMST + longitude/15
-  const lstHours = gmst + longitude / 15;
-  let lstDegrees = (lstHours * 15) % 360; // Convert to degrees
-  if (lstDegrees < 0) lstDegrees += 360;
-
-  // Calculate hour angle (H) in degrees
-  // Hour angle = LST - RA
-  let hourAngle = lstDegrees - raDegrees;
-  // Normalize to -180 to 180 range
-  while (hourAngle > 180) hourAngle -= 360;
-  while (hourAngle < -180) hourAngle += 360;
-
-  // Convert to radians for calculations
-  const latRad = (latitude * Math.PI) / 180;
-  const decRad = (dec * Math.PI) / 180;
-  const hRad = (hourAngle * Math.PI) / 180;
-
-  // Calculate parallactic angle using the formula:
-  // q = atan2(sin(H), tan(φ) * cos(δ) - sin(δ) * cos(H))
-  // where:
-  //   H = hour angle
-  //   φ = observer's latitude
-  //   δ = moon's declination
-  const numerator = Math.sin(hRad);
-  const denominator = Math.tan(latRad) * Math.cos(decRad) - Math.sin(decRad) * Math.cos(hRad);
-  const parallacticAngleRad = Math.atan2(numerator, denominator);
-
-  // Convert to degrees and normalize to 0-360 range
-  let parallacticAngleDeg = (parallacticAngleRad * 180) / Math.PI;
-  if (parallacticAngleDeg < 0) parallacticAngleDeg += 360;
-
-  return parallacticAngleDeg;
+function normalizeDegrees0To360(deg: number): number {
+	let d = deg % 360;
+	if (d < 0) d += 360;
+	return d;
 }
 
+/** Position angle of the Sun at the Moon (bright limb), radians. RA/Dec in radians. */
+function positionAngleSunAtMoonRad(
+	moonRa: number,
+	moonDec: number,
+	sunRa: number,
+	sunDec: number
+): number {
+	const dra = sunRa - moonRa;
+	return Math.atan2(
+		Math.sin(dra),
+		Math.cos(moonDec) * Math.tan(sunDec) - Math.sin(moonDec) * Math.cos(dra)
+	);
+}
+
+/** Parallactic angle q at the Moon, radians. Moon RA in hours, Dec in degrees. */
+function parallacticAngleRad(
+	latitude: number,
+	moonRaHours: number,
+	moonDecDeg: number,
+	date: Date,
+	longitude: number
+): number {
+	const raDegrees = moonRaHours * 15;
+	const gmst = SiderealTime(date);
+	let lstDegrees = (gmst + longitude / 15) * 15;
+	lstDegrees = normalizeDegrees0To360(lstDegrees);
+
+	let hourAngle = lstDegrees - raDegrees;
+	while (hourAngle > 180) hourAngle -= 360;
+	while (hourAngle < -180) hourAngle += 360;
+
+	const latRad = latitude * DEG;
+	const decRad = moonDecDeg * DEG;
+	const hRad = hourAngle * DEG;
+
+	return Math.atan2(
+		Math.sin(hRad),
+		Math.tan(latRad) * Math.cos(decRad) - Math.sin(decRad) * Math.cos(hRad)
+	);
+}
+
+/**
+ * Observer-centric moon orientation at a UTC instant.
+ *
+ * - `parallactic_angle` (q): how the lunar disc is tilted in the local sky frame.
+ * - `bright_limb_angle` (θ = pa − q): direction to the Sun, clockwise from zenith at the Moon
+ *   (what a viewer sees when looking up). Use this for print posters.
+ */
+export function calculateMoonOrientationAngles(
+	latitude: number,
+	longitude: number,
+	date: Date
+): MoonOrientationAngles {
+	const observer = new Observer(latitude, longitude, 0);
+	const moonEqu = Equator(Body.Moon, date, observer, false, true);
+	const sunEqu = Equator(Body.Sun, date, observer, false, true);
+
+	const moonRa = moonEqu.ra * 15 * DEG;
+	const moonDec = moonEqu.dec * DEG;
+	const sunRa = sunEqu.ra * 15 * DEG;
+	const sunDec = sunEqu.dec * DEG;
+
+	const pa = positionAngleSunAtMoonRad(moonRa, moonDec, sunRa, sunDec);
+	const q = parallacticAngleRad(latitude, moonEqu.ra, moonEqu.dec, date, longitude);
+	const theta = pa - q;
+
+	return {
+		parallactic_angle: normalizeDegrees0To360((q * 180) / Math.PI),
+		bright_limb_angle: normalizeDegrees0To360((theta * 180) / Math.PI),
+	};
+}
+
+/**
+ * Parallactic angle q (degrees, 0–360). Used for UI/CSS rotation on age-based assets.
+ */
+export function calculateMoonRotationAngle(
+	latitude: number,
+	longitude: number,
+	date: Date
+): number {
+	return calculateMoonOrientationAngles(latitude, longitude, date).parallactic_angle;
+}
