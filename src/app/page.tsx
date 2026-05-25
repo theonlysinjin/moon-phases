@@ -19,50 +19,15 @@ import {
 } from "../utils/time";
 import { DateTime } from "luxon";
 
-const LOCATION_STORAGE_KEY = "moon-calendar-location";
-
 function posterCacheKey(locationSlug: string, year: number, viewHour: number): string {
   return `${locationSlug}-${year}-${viewHour}`;
 }
 
-function loadStoredLocation(): LocationConfig | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(LOCATION_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as LocationConfig;
-    if (
-      typeof parsed.slug === "string" &&
-      typeof parsed.label === "string" &&
-      typeof parsed.lat === "number" &&
-      typeof parsed.lon === "number" &&
-      typeof parsed.tz === "string"
-    ) {
-      return parsed;
-    }
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
-
 export default function Home() {
   const [selectedLocation, setSelectedLocation] = useState<LocationConfig | null>(null);
-  const [locationHydrated, setLocationHydrated] = useState(false);
-
-  useEffect(() => {
-    const stored = loadStoredLocation();
-    if (stored) setSelectedLocation(stored);
-    setLocationHydrated(true);
-  }, []);
 
   const handleLocationSelect = useCallback((loc: LocationConfig) => {
     setSelectedLocation(loc);
-    try {
-      localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(loc));
-    } catch {
-      /* ignore */
-    }
   }, []);
 
   const [loading, setLoading] = useState(false);
@@ -253,7 +218,7 @@ export default function Home() {
   }, [moonPhases, loading, fetchMore]);
 
   useEffect(() => {
-    if (!locationHydrated || !selectedLocation) return;
+    if (!selectedLocation) return;
 
     viewHourSkipInitialRef.current = true;
     setMoonPhases(null);
@@ -300,7 +265,7 @@ export default function Home() {
 
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- posterData intentionally excluded
-  }, [selectedLocation?.slug, selectedTheme, locationHydrated]);
+  }, [selectedLocation?.slug, selectedTheme]);
 
   // Regenerate when viewHour changes (daily themes only)
   useEffect(() => {
@@ -477,7 +442,7 @@ export default function Home() {
         </div>
       )}
 
-      {!loading && !selectedLocation && locationHydrated && (
+      {!loading && !selectedLocation && (
         <div className="mt-12 text-gray-500 text-lg">
           No moon phase data to display. Search for a city or use Near me to begin.
         </div>
