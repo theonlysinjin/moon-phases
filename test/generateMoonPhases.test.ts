@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { generateMoonPhases } from '../src/utils/generateMoonPhases';
 import { DEFAULT_VIEW_HOUR } from '../src/types/api';
+import { presetByLabel } from '../src/config/cities';
 
 describe('generateMoonPhases', () => {
   it('samples daily at 9pm local with date_local and UTC instant', async () => {
-    const entries = await generateMoonPhases('New York', '20250701', '20250701', {
+    const entries = await generateMoonPhases(presetByLabel('New York'), '20250701', '20250701', {
       viewHour: DEFAULT_VIEW_HOUR,
     });
     expect(entries).toHaveLength(1);
@@ -15,10 +16,10 @@ describe('generateMoonPhases', () => {
   });
 
   it('different viewHour changes UTC instant and rotation', async () => {
-    const at9pm = await generateMoonPhases('New York', '20250701', '20250701', {
+    const at9pm = await generateMoonPhases(presetByLabel('New York'), '20250701', '20250701', {
       viewHour: 21,
     });
-    const atNoon = await generateMoonPhases('New York', '20250701', '20250701', {
+    const atNoon = await generateMoonPhases(presetByLabel('New York'), '20250701', '20250701', {
       viewHour: 12,
     });
     expect(at9pm[0].date_utc).not.toBe(atNoon[0].date_utc);
@@ -26,7 +27,7 @@ describe('generateMoonPhases', () => {
   });
 
   it('assigns major_phase on local calendar day', async () => {
-    const entries = await generateMoonPhases('Cape Town', '20250101', '20251231');
+    const entries = await generateMoonPhases(presetByLabel('Cape Town'), '20250101', '20251231');
     const withMajor = entries.filter((e) => e.major_phase !== null);
     expect(withMajor.length).toBeGreaterThan(0);
     for (const e of withMajor) {

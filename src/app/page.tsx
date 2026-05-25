@@ -1,13 +1,13 @@
 "use client";
 
-import { LocationSelector } from "../components/LocationSelector";
+import { CitySearch } from "../components/CitySearch";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { fetchMoonPhases } from "../utils/api";
 import type { MoonPhaseEntry } from "../types/moonPhase";
+import type { LocationConfig } from "../config/cities";
 import { CalendarGrid } from "../components/CalendarGrid";
 import { MoonPhaseImagePreloader } from "../components/MoonPhaseImagePreloader";
 import { TimeOfDaySlider } from "../components/TimeOfDaySlider";
-import { CITY_OPTIONS, CITY_BY_SLUG } from "../config/cities";
 import { DEFAULT_VIEW_HOUR } from "../types/api";
 import {
   startOfCurrentLocalMonthYmd,
@@ -19,13 +19,51 @@ import {
 } from "../utils/time";
 import { DateTime } from "luxon";
 
-function posterCacheKey(citySlug: string, year: number, viewHour: number): string {
-  return `${citySlug}-${year}-${viewHour}`;
+const LOCATION_STORAGE_KEY = "moon-calendar-location";
+
+function posterCacheKey(locationSlug: string, year: number, viewHour: number): string {
+  return `${locationSlug}-${year}-${viewHour}`;
+}
+
+function loadStoredLocation(): LocationConfig | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(LOCATION_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as LocationConfig;
+    if (
+      typeof parsed.slug === "string" &&
+      typeof parsed.label === "string" &&
+      typeof parsed.lat === "number" &&
+      typeof parsed.lon === "number" &&
+      typeof parsed.tz === "string"
+    ) {
+      return parsed;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
 }
 
 export default function Home() {
-  const [selectedCitySlug, setSelectedCitySlug] = useState<string>("");
-  const selectedCity = selectedCitySlug ? CITY_BY_SLUG[selectedCitySlug] : null;
+  const [selectedLocation, setSelectedLocation] = useState<LocationConfig | null>(null);
+  const [locationHydrated, setLocationHydrated] = useState(false);
+
+  useEffect(() => {
+    const stored = loadStoredLocation();
+    if (stored) setSelectedLocation(stored);
+    setLocationHydrated(true);
+  }, []);
+
+  const handleLocationSelect = useCallback((loc: LocationConfig) => {
+    setSelectedLocation(loc);
+    try {
+      localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(loc));
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const [loading, setLoading] = useState(false);
   const [moonPhases, setMoonPhases] = useState<MoonPhaseEntry[] | null>(null);
@@ -38,7 +76,7 @@ export default function Home() {
   const viewHourDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const viewHourSkipInitialRef = useRef(true);
 
-  const tz = selectedCity?.tz ?? "UTC";
+  const tz = selectedLocation?.tz ?? "UTC";
   const currentLocalYear = DateTime.now().setZone(tz).year;
   const [posterYear, setPosterYear] = useState<number>(currentLocalYear);
   const [posterData, setPosterData] = useState<Record<string, MoonPhaseEntry[]>>({});
@@ -97,11 +135,11 @@ export default function Home() {
   );
 
   const loadPhases = useCallback(
-    async (cityLabel: string, dateFrom: string, dateTo: string) => {
+    async (location: LocationConfig, dateFrom: string, dateTo: string) => {
       const t0 = performance.now();
-      const data = await fetchMoonPhases(cityLabel, dateFrom, dateTo, fetchOptions());
+      const data = await fetchMoonPhases(location, dateFrom, dateTo, fetchOptions());
       const t1 = performance.now();
-      logPerf(cityLabel, dateFrom, dateTo, t0, t1, data.length, selectedTheme);
+      logPerf(location.label, dateFrom, dateTo, t0, t1, data.length, selectedTheme);
       return data;
     },
     [fetchOptions, logPerf, selectedTheme]
@@ -111,7 +149,7 @@ export default function Home() {
 
   const fetchMore = useCallback(
     async (direction?: FetchDirection | number) => {
-      if (!selectedCity) return;
+      if (!selectedLocation) return;
       if (selectedTheme === "hourly-timeline") return;
 
       setLoading(true);
@@ -121,14 +159,14 @@ export default function Home() {
             typeof direction === "number" ? direction : posterYear;
           const dateFrom = `${yearToFetch}0101`;
           const dateTo = `${yearToFetch}1231`;
-          const cacheKey = posterCacheKey(selectedCitySlug, yearToFetch, viewHour);
+          const cacheKey = posterCacheKey(selectedLocation.slug, yearToFetch, viewHour);
           const cached = posterData[cacheKey];
           if (cached) {
             setMoonPhases(cached);
             setDateRange({ from: dateFrom, to: dateTo });
             return;
           }
-          const data = await loadPhases(selectedCity.label, dateFrom, dateTo);
+          const data = await loadPhases(selectedLocation, dateFrom, dateTo);
           setPosterData((prev) => ({ ...prev, [cacheKey]: data }));
           setMoonPhases(data);
           setDateRange({ from: dateFrom, to: dateTo });
@@ -141,7 +179,7 @@ export default function Home() {
             });
             const dateToAdjusted = endDt.toFormat("yyyyMMdd");
             const data = await loadPhases(
-              selectedCity.label,
+              selectedLocation,
               dateFrom,
               dateToAdjusted
             );
@@ -154,7 +192,7 @@ export default function Home() {
               tz
             );
             const data = await loadPhases(
-              selectedCity.label,
+              selectedLocation,
               dateFrom,
               dateTo
             );
@@ -169,8 +207,7 @@ export default function Home() {
       }
     },
     [
-      selectedCity,
-      selectedCitySlug,
+      selectedLocation,
       selectedTheme,
       dateRange,
       posterYear,
@@ -182,9 +219,10 @@ export default function Home() {
   );
 
   const handlePosterYearChange = async (delta: number) => {
+    if (!selectedLocation) return;
     const newYear = posterYear + delta;
     setPosterYear(newYear);
-    const cacheKey = posterCacheKey(selectedCitySlug, newYear, viewHour);
+    const cacheKey = posterCacheKey(selectedLocation.slug, newYear, viewHour);
     if (posterData[cacheKey]) {
       setMoonPhases(posterData[cacheKey]);
       setDateRange({ from: `${newYear}0101`, to: `${newYear}1231` });
@@ -215,7 +253,7 @@ export default function Home() {
   }, [moonPhases, loading, fetchMore]);
 
   useEffect(() => {
-    if (!selectedCity) return;
+    if (!locationHydrated || !selectedLocation) return;
 
     viewHourSkipInitialRef.current = true;
     setMoonPhases(null);
@@ -230,7 +268,7 @@ export default function Home() {
           const year = DateTime.now().setZone(tz).year;
           dateFrom = `${year}0101`;
           dateTo = `${year}1231`;
-          const cacheKey = posterCacheKey(selectedCitySlug, year, viewHour);
+          const cacheKey = posterCacheKey(selectedLocation.slug, year, viewHour);
           const cached = posterData[cacheKey];
           if (cached) {
             setPosterYear(year);
@@ -238,7 +276,7 @@ export default function Home() {
             setDateRange({ from: dateFrom, to: dateTo });
             return;
           }
-          const data = await loadPhases(selectedCity.label, dateFrom, dateTo);
+          const data = await loadPhases(selectedLocation, dateFrom, dateTo);
           setPosterData((prev) => ({ ...prev, [cacheKey]: data }));
           setPosterYear(year);
           setMoonPhases(data);
@@ -246,7 +284,7 @@ export default function Home() {
         } else if (["calendar", "lunar-cycle"].includes(selectedTheme)) {
           dateFrom = startOfCurrentLocalMonthYmd(tz);
           dateTo = endOfLocalMonthPlusMonthsYmd(tz, 5);
-          const data = await loadPhases(selectedCity.label, dateFrom, dateTo);
+          const data = await loadPhases(selectedLocation, dateFrom, dateTo);
           setMoonPhases(data);
           setDateRange({ from: dateFrom, to: dateTo });
         } else if (selectedTheme === "hourly-timeline") {
@@ -262,7 +300,7 @@ export default function Home() {
 
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- posterData intentionally excluded
-  }, [selectedCitySlug, selectedTheme]);
+  }, [selectedLocation?.slug, selectedTheme, locationHydrated]);
 
   // Regenerate when viewHour changes (daily themes only)
   useEffect(() => {
@@ -270,7 +308,7 @@ export default function Home() {
       viewHourSkipInitialRef.current = false;
       return;
     }
-    if (!selectedCity || !dateRange) return;
+    if (!selectedLocation || !dateRange) return;
     if (selectedTheme === "hourly-timeline") return;
 
     if (viewHourDebounceRef.current) {
@@ -281,10 +319,10 @@ export default function Home() {
       setLoading(true);
       try {
         const { from, to } = dateRange;
-        const data = await loadPhases(selectedCity.label, from, to);
+        const data = await loadPhases(selectedLocation, from, to);
         if (selectedTheme === "poster") {
           const year = from.slice(0, 4);
-          const cacheKey = posterCacheKey(selectedCitySlug, Number(year), viewHour);
+          const cacheKey = posterCacheKey(selectedLocation.slug, Number(year), viewHour);
           setPosterData((prev) => ({ ...prev, [cacheKey]: data }));
         }
         setMoonPhases(data);
@@ -304,7 +342,13 @@ export default function Home() {
   const darkControls = ["calendar", "lunar-cycle", "poster"].includes(selectedTheme);
   const showViewHourSlider = selectedTheme !== "hourly-timeline";
   const showHourlyParallacticCheckbox =
-    selectedTheme === "hourly-timeline" && selectedCity != null;
+    selectedTheme === "hourly-timeline" && selectedLocation != null;
+
+  const controlInputClass = `w-full border rounded px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+    darkControls
+      ? "bg-gray-900 text-white border-gray-700 placeholder-gray-400"
+      : "bg-white text-black border-gray-300"
+  }`;
 
   return (
     <div className="flex flex-col items-center justify-start min-h-screen p-8 gap-8 bg-black text-white">
@@ -374,17 +418,14 @@ export default function Home() {
 
       <div className="w-full max-w-md flex flex-col gap-4 mb-2">
         <div className="flex-1">
-          <label htmlFor="city-select" className="block mb-1 font-medium">
+          <label htmlFor="city-search" className="block mb-1 font-medium">
             City:
           </label>
-          <LocationSelector
-            cities={CITY_OPTIONS}
-            onSelect={(c) => setSelectedCitySlug(c.value)}
-            className={`w-full border rounded px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 ${
-              darkControls
-                ? "bg-gray-900 text-white border-gray-700 placeholder-gray-400"
-                : "bg-white text-black border-gray-300"
-            }`}
+          <CitySearch
+            value={selectedLocation}
+            onSelect={handleLocationSelect}
+            dark={darkControls}
+            inputClassName={controlInputClass}
           />
         </div>
         <div className="flex-1">
@@ -395,11 +436,7 @@ export default function Home() {
             id="theme-select"
             value={selectedTheme}
             onChange={(e) => setSelectedTheme(e.target.value)}
-            className={`w-full border rounded px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 ${
-              darkControls
-                ? "bg-gray-900 text-white border-gray-700"
-                : "bg-white text-black border-gray-300"
-            }`}
+            className={controlInputClass}
           >
             <option value="calendar">Calendar</option>
             <option value="lunar-cycle">Lunar Cycle</option>
@@ -407,12 +444,12 @@ export default function Home() {
             <option value="poster">Poster</option>
           </select>
         </div>
-        {showViewHourSlider && selectedCity && (
+        {showViewHourSlider && selectedLocation && (
           <TimeOfDaySlider
             value={viewHour}
             onChange={setViewHour}
             tz={tz}
-            cityLabel={selectedCity.label}
+            cityLabel={selectedLocation.label}
             className={darkControls ? "text-white" : "text-black"}
           />
         )}
@@ -427,7 +464,7 @@ export default function Home() {
             <span>
               Parallactic rotation
               <span className="block text-xs text-gray-500 mt-0.5 font-normal">
-                Uses {selectedCity!.label} ({tz}). Synodic cycle only when off.
+                Uses {selectedLocation!.label} ({tz}). Synodic cycle only when off.
               </span>
             </span>
           </label>
@@ -440,14 +477,14 @@ export default function Home() {
         </div>
       )}
 
-      {!loading && !selectedCity && (
+      {!loading && !selectedLocation && locationHydrated && (
         <div className="mt-12 text-gray-500 text-lg">
-          No moon phase data to display. Select a city to begin.
+          No moon phase data to display. Search for a city or use Near me to begin.
         </div>
       )}
 
       {!loading &&
-        selectedCity &&
+        selectedLocation &&
         selectedTheme !== "hourly-timeline" &&
         (!moonPhases || moonPhases.length === 0) && (
         <div className="mt-12 text-gray-500 text-lg">
@@ -455,14 +492,14 @@ export default function Home() {
         </div>
       )}
 
-      {selectedCity &&
+      {selectedLocation &&
         (selectedTheme === "hourly-timeline" ||
           (moonPhases && moonPhases.length > 0)) && (
         <>
           <div className="w-full flex flex-col items-center">
             <div className="mt-2 text-2xl font-semibold text-center">
               Moon Phase Calendar for{" "}
-              <span className="font-bold">{selectedCity.label}</span>
+              <span className="font-bold">{selectedLocation.label}</span>
               {dateRange && (
                 <span className="ml-2 text-xl font-normal text-gray-500">
                   {dateRange.from.slice(0, 4) === dateRange.to.slice(0, 4)
@@ -475,13 +512,13 @@ export default function Home() {
               moonPhases={moonPhases ?? []}
               theme={selectedTheme}
               tz={tz}
-              latitude={selectedCity.lat}
-              longitude={selectedCity.lon}
+              latitude={selectedLocation.lat}
+              longitude={selectedLocation.lon}
               viewHour={viewHour}
               parallacticRotationEnabled={hourlyParallacticEnabled}
               triggerRef={triggerRef}
               renderLoadPrevious={() => null}
-              key={`${selectedTheme}-${selectedCitySlug}-${viewHour}`}
+              key={`${selectedTheme}-${selectedLocation.slug}-${viewHour}`}
             />
           </div>
 
@@ -505,6 +542,37 @@ export default function Home() {
           )}
         </>
       )}
+
+      <footer className="w-full max-w-md text-center text-[10px] text-gray-500 leading-snug mt-auto pt-8">
+        Location search via{" "}
+        <a
+          href="https://open-meteo.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-gray-300"
+        >
+          Open-Meteo
+        </a>{" "}
+        /{" "}
+        <a
+          href="https://www.geonames.org/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-gray-300"
+        >
+          GeoNames
+        </a>
+        . Near me uses{" "}
+        <a
+          href="https://www.openstreetmap.org/copyright"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-gray-300"
+        >
+          OpenStreetMap
+        </a>
+        .
+      </footer>
     </div>
   );
 }
