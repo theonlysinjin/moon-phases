@@ -34,7 +34,7 @@ export function CitySearch({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (value) setQuery(value.label);
+    setQuery(value?.label ?? "");
   }, [value]);
 
   useEffect(() => {
@@ -116,70 +116,88 @@ export function CitySearch({
 
   return (
     <div ref={containerRef} className={className}>
-      <div className="flex gap-2">
-        <input
-          type="text"
-          role="combobox"
-          aria-expanded={open}
-          aria-controls={listId}
-          aria-autocomplete="list"
-          placeholder="Search for a city…"
-          value={query}
-          onChange={handleInputChange}
-          onFocus={() => {
-            if (results.length > 0) setOpen(true);
-          }}
-          className={`flex-1 min-w-0 border rounded px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 ${inputStyles}`}
-        />
-        <button
-          type="button"
-          onClick={handleUseLocation}
-          disabled={geoLoading}
-          title="Use my location"
-          className={`shrink-0 px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 ${
-            dark
-              ? "bg-gray-800 text-white border-gray-600 hover:bg-gray-700"
-              : "bg-gray-100 text-black border-gray-300 hover:bg-gray-200"
-          }`}
-        >
-          {geoLoading ? "…" : "Near me"}
-        </button>
-      </div>
+      <div className="relative">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            role="combobox"
+            aria-expanded={open}
+            aria-controls={listId}
+            aria-autocomplete="list"
+            placeholder="Search for a city…"
+            value={query}
+            onChange={handleInputChange}
+            onFocus={() => {
+              if (results.length > 0) setOpen(true);
+            }}
+            className={`flex-1 min-w-0 border rounded px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 ${inputStyles}`}
+          />
+          <button
+            type="button"
+            onClick={handleUseLocation}
+            disabled={geoLoading}
+            title="Use my location"
+            className={`shrink-0 px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 ${
+              dark
+                ? "bg-gray-800 text-white border-gray-600 hover:bg-gray-700"
+                : "bg-gray-100 text-black border-gray-300 hover:bg-gray-200"
+            }`}
+          >
+            {geoLoading ? "…" : "Near me"}
+          </button>
+        </div>
 
-      {(searching || error) && (
-        <p className={`mt-1 text-xs ${error ? "text-red-400" : "text-gray-500"}`}>
-          {error ?? "Searching…"}
-        </p>
-      )}
-
-      {open && results.length > 0 && (
-        <ul
-          id={listId}
-          role="listbox"
-          className={`mt-1 max-h-48 overflow-auto border rounded shadow-lg z-10 ${listStyles}`}
-        >
-          {results.map((loc) => (
-            <li
-              key={loc.slug}
-              role="option"
-              aria-selected={value?.slug === loc.slug}
-            >
-              <button
-                type="button"
-                className={`w-full text-left px-3 py-2 text-sm ${itemHover}`}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => pick(loc)}
+        {(searching || error || open) && (
+          <div className="absolute top-full left-0 right-0 mt-1 z-50">
+            {(searching || error) && (
+              <p
+                className={`px-3 py-2 text-xs border rounded shadow-lg ${listStyles} ${
+                  error ? "text-red-400" : "text-gray-500"
+                }`}
               >
-                {loc.label}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+                {error ?? "Searching…"}
+              </p>
+            )}
 
-      {open && !searching && query.trim().length >= MIN_QUERY_LENGTH && results.length === 0 && !error && (
-        <p className="mt-1 text-xs text-gray-500">No cities found.</p>
-      )}
+            {open && results.length > 0 && (
+              <ul
+                id={listId}
+                role="listbox"
+                className={`max-h-48 overflow-auto border rounded shadow-lg ${listStyles} ${
+                  searching || error ? "mt-1" : ""
+                }`}
+              >
+                {results.map((loc) => (
+                  <li
+                    key={loc.slug}
+                    role="option"
+                    aria-selected={value?.slug === loc.slug}
+                  >
+                    <button
+                      type="button"
+                      className={`w-full text-left px-3 py-2 text-sm ${itemHover}`}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => pick(loc)}
+                    >
+                      {loc.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {open &&
+              !searching &&
+              query.trim().length >= MIN_QUERY_LENGTH &&
+              results.length === 0 &&
+              !error && (
+                <p className={`px-3 py-2 text-xs text-gray-500 border rounded shadow-lg ${listStyles}`}>
+                  No cities found.
+                </p>
+              )}
+          </div>
+        )}
+      </div>
 
       <div className="mt-2 flex flex-wrap gap-1">
         {PRESET_LOCATIONS.map((loc) => (
