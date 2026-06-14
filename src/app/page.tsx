@@ -316,7 +316,7 @@ export default function Home() {
   }`;
 
   return (
-    <div className="flex flex-col items-center justify-start min-h-screen p-8 gap-8 bg-black text-white">
+    <div className="flex flex-col items-center justify-start min-h-screen w-full min-w-0 overflow-x-hidden p-8 gap-8 bg-black text-white">
       <MoonPhaseImagePreloader />
 
       <div className="fixed bottom-4 right-4 z-50">
@@ -461,7 +461,7 @@ export default function Home() {
         (selectedTheme === "hourly-timeline" ||
           (moonPhases && moonPhases.length > 0)) && (
         <>
-          <div className="w-full flex flex-col items-center">
+          <div className="w-full max-w-full min-w-0 flex flex-col items-center">
             <div className="mt-2 text-2xl font-semibold text-center">
               Moon Phase Calendar for{" "}
               <span className="font-bold">{selectedLocation.label}</span>
