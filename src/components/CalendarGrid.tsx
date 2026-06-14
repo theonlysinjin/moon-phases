@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import { DateTime } from "luxon";
 import type { MoonPhaseEntry } from "../types/moonPhase";
 import { getMoonPhaseVisual } from "../utils/getMoonPhaseVisual";
@@ -33,6 +33,133 @@ function buildCalendarWeeks(
     weeks.push(days.slice(i, i + 7));
   }
   return weeks;
+}
+
+function PosterGrid({
+  moonPhases,
+  theme,
+}: {
+  moonPhases: MoonPhaseEntry[];
+  theme: string;
+}) {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
+  const [tableSize, setTableSize] = useState({ w: 0, h: 0 });
+  const [fitScale, setFitScale] = useState(1);
+  const [zoomPercent, setZoomPercent] = useState(100);
+
+  const phaseByMonthDay: Record<number, Record<number, MoonPhaseEntry>> = {};
+  moonPhases.forEach((entry) => {
+    const [, monthStr, dayStr] = entry.date_local.split("-");
+    const month = Number(monthStr);
+    const day = Number(dayStr);
+    if (!phaseByMonthDay[month]) phaseByMonthDay[month] = {};
+    phaseByMonthDay[month][day] = entry;
+  });
+  const months = Array.from({ length: 12 }, (_, i) => i + 1);
+  const days = Array.from({ length: 31 }, (_, i) => i + 1);
+
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    const table = tableRef.current;
+    if (!viewport || !table) return;
+
+    const update = () => {
+      const width = table.offsetWidth;
+      const height = table.offsetHeight;
+      setTableSize({ w: width, h: height });
+      const vw = viewport.clientWidth;
+      setFitScale(vw > 0 && width > 0 ? Math.min(1, vw / width) : 1);
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(viewport);
+    ro.observe(table);
+    return () => ro.disconnect();
+  }, [moonPhases]);
+
+  const scale = fitScale * (zoomPercent / 100);
+  const scaledW = tableSize.w * scale;
+  const scaledH = tableSize.h * scale;
+
+  return (
+    <div className="w-full flex flex-col items-center gap-3 mt-8">
+      <div ref={viewportRef} className="w-full flex justify-center overflow-hidden">
+        <div style={{ width: scaledW || undefined, height: scaledH || undefined }}>
+          <div
+            style={{
+              transform: `scale(${scale})`,
+              transformOrigin: "top left",
+              width: tableSize.w || undefined,
+              height: tableSize.h || undefined,
+            }}
+          >
+            <table ref={tableRef} className="border-collapse">
+              <thead>
+                <tr>
+                  <th className="w-8 h-8" />
+                  {months.map((month) => (
+                    <th
+                      key={month}
+                      className="text-xs font-bold text-gray-200 px-2 py-1 text-center"
+                    >
+                      {month}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {days.map((day) => (
+                  <tr key={day}>
+                    <td className="text-xs font-mono text-gray-400 text-right pr-2 align-middle">
+                      {day}
+                    </td>
+                    {months.map((month) => {
+                      const entry = phaseByMonthDay[month]?.[day];
+                      return (
+                        <td
+                          key={month + "-" + day}
+                          className="bg-black p-0 m-0 text-center align-middle"
+                          style={{ width: 56, height: 56 }}
+                        >
+                          {entry ? (
+                            <div
+                              className="flex flex-col items-center justify-center"
+                              style={{ minHeight: 56, minWidth: 56 }}
+                            >
+                              {getMoonPhaseVisual(
+                                entry,
+                                "3rem",
+                                "w-12 h-12 object-contain",
+                                theme
+                              )}
+                            </div>
+                          ) : null}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <label className="flex items-center gap-2 text-xs text-gray-400 w-full max-w-xs">
+        <span className="shrink-0">Zoom</span>
+        <input
+          type="range"
+          min={50}
+          max={100}
+          value={zoomPercent}
+          onChange={(e) => setZoomPercent(Number(e.target.value))}
+          className="flex-1 accent-blue-500"
+        />
+        <span className="shrink-0 tabular-nums w-10 text-right">{zoomPercent}%</span>
+      </label>
+    </div>
+  );
 }
 
 interface CalendarGridProps {
@@ -261,69 +388,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
   }
 
   if (theme === "poster") {
-    const phaseByMonthDay: Record<number, Record<number, MoonPhaseEntry>> = {};
-    moonPhases.forEach((entry) => {
-      const [, monthStr, dayStr] = entry.date_local.split("-");
-      const month = Number(monthStr);
-      const day = Number(dayStr);
-      if (!phaseByMonthDay[month]) phaseByMonthDay[month] = {};
-      phaseByMonthDay[month][day] = entry;
-    });
-    const months = Array.from({ length: 12 }, (_, i) => i + 1);
-    const days = Array.from({ length: 31 }, (_, i) => i + 1);
-
-    return (
-      <div className="w-fit max-w-none mx-auto mt-8">
-        <table className="border-collapse">
-          <thead>
-            <tr>
-              <th className="w-8 h-8" />
-              {months.map((month) => (
-                <th
-                  key={month}
-                  className="text-xs font-bold text-gray-200 px-2 py-1 text-center"
-                >
-                  {month}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {days.map((day) => (
-              <tr key={day}>
-                <td className="text-xs font-mono text-gray-400 text-right pr-2 align-middle">
-                  {day}
-                </td>
-                {months.map((month) => {
-                  const entry = phaseByMonthDay[month]?.[day];
-                  return (
-                    <td
-                      key={month + "-" + day}
-                      className="bg-black p-0 m-0 text-center align-middle"
-                      style={{ width: 56, height: 56 }}
-                    >
-                      {entry ? (
-                        <div
-                          className="flex flex-col items-center justify-center"
-                          style={{ minHeight: 56, minWidth: 56 }}
-                        >
-                          {getMoonPhaseVisual(
-                            entry,
-                            "3rem",
-                            "w-12 h-12 object-contain",
-                            theme
-                          )}
-                        </div>
-                      ) : null}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
+    return <PosterGrid moonPhases={moonPhases} theme={theme} />;
   }
 
   return null;
