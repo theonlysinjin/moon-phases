@@ -138,6 +138,43 @@ function getCurrentPosition(): Promise<GeolocationPosition> {
   });
 }
 
+const OPEN_METEO_FORECAST = 'https://api.open-meteo.com/v1/forecast';
+
+type OpenMeteoForecastResponse = {
+  timezone?: string;
+};
+
+/** Resolve IANA timezone for coordinates via Open-Meteo. Falls back to browser TZ. */
+export async function getTimezoneForCoordinates(lat: number, lon: number): Promise<string> {
+  const params = new URLSearchParams({
+    latitude: String(lat),
+    longitude: String(lon),
+    current: 'temperature_2m',
+    timezone: 'auto',
+  });
+
+  try {
+    const res = await fetch(`${OPEN_METEO_FORECAST}?${params}`);
+    if (!res.ok) return getBrowserTimezone();
+    const data = (await res.json()) as OpenMeteoForecastResponse;
+    return data.timezone && data.timezone.length > 0 ? data.timezone : getBrowserTimezone();
+  } catch {
+    return getBrowserTimezone();
+  }
+}
+
+export async function resolveLocationFromCoordinates(
+  lat: number,
+  lon: number
+): Promise<LocationConfig> {
+  const [label, tz] = await Promise.all([
+    reverseGeocodeLabel(lat, lon),
+    getTimezoneForCoordinates(lat, lon),
+  ]);
+  const slug = `geo-${lat.toFixed(4)}-${lon.toFixed(4)}`;
+  return { slug, label, lat, lon, tz };
+}
+
 export async function resolveFromGeolocation(): Promise<LocationConfig> {
   const position = await getCurrentPosition();
   const { latitude: lat, longitude: lon } = position.coords;
