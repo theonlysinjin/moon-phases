@@ -4,7 +4,7 @@
   "private": true,
   "description": "Beautiful lunar phases by city with infinite scroll and a poster view.",
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev --turbopack -p 3002",
     "build": "node scripts/verify-moon-images.js && node scripts/generate-inline-phases.js && next build",
     "start": "next start",
     "lint": "next lint",

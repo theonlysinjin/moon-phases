@@ -6,6 +6,8 @@ import type { MoonPhaseEntry } from "../types/moonPhase";
 import { getMoonPhaseVisual } from "../utils/getMoonPhaseVisual";
 import { HourlyTimeline } from "./HourlyTimeline";
 import { todayLocalDate } from "../utils/time";
+import { formatViewingTimeDisplay } from "./TimeOfDaySlider";
+import type { ViewType } from "../utils/urlParams";
 
 function buildCalendarWeeks(
   entries: MoonPhaseEntry[],
@@ -46,6 +48,7 @@ interface CalendarGridProps {
   triggerRef?: React.RefObject<HTMLDivElement | null>;
   topTriggerRef?: React.RefObject<HTMLDivElement | null>;
   renderLoadPrevious?: () => React.ReactNode;
+  singleDayView?: ViewType;
 }
 
 export const CalendarGrid: React.FC<CalendarGridProps> = ({
@@ -59,6 +62,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
   triggerRef,
   topTriggerRef,
   renderLoadPrevious,
+  singleDayView = "display",
 }) => {
   if (theme === "hourly-timeline") {
     if (latitude == null || longitude == null) return null;
@@ -257,6 +261,53 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
           )}
         </div>
       </>
+    );
+  }
+
+  if (theme === "single-day") {
+    const entry = moonPhases[0];
+    if (!entry) return null;
+
+    const moonSize =
+      singleDayView === "image-only" ? "min(90vmin, 720px)" : "min(75vmin, 520px)";
+    const moonClass =
+      singleDayView === "image-only"
+        ? "w-[min(90vmin,720px)] h-[min(90vmin,720px)] object-contain"
+        : "w-[min(75vmin,520px)] h-[min(75vmin,520px)] object-contain";
+
+    if (singleDayView === "image-only") {
+      return (
+        <div className="flex items-center justify-center">
+          {getMoonPhaseVisual(entry, moonSize, moonClass, theme)}
+        </div>
+      );
+    }
+
+    const dateLabel = DateTime.fromISO(entry.date_local, { zone: tz }).toLocaleString(
+      DateTime.DATE_FULL
+    );
+    const illuminationPct = Math.round(entry.illuminated_fraction * 100);
+    const phaseLabel = entry.is_waxing ? "Waxing" : "Waning";
+
+    return (
+      <div className="w-full max-w-xl flex flex-col items-center gap-8">
+        {getMoonPhaseVisual(entry, moonSize, moonClass, theme)}
+        <div className="text-center space-y-2">
+          <div className="text-2xl font-semibold text-white">{dateLabel}</div>
+          {viewHour != null && (
+            <div className="text-sm text-gray-400">
+              {formatViewingTimeDisplay(viewHour, tz)}
+            </div>
+          )}
+          {entry.major_phase ? (
+            <div className="text-lg text-white">{entry.major_phase}</div>
+          ) : (
+            <div className="text-lg text-gray-400">
+              {phaseLabel} · {illuminationPct}% illuminated
+            </div>
+          )}
+        </div>
+      </div>
     );
   }
 

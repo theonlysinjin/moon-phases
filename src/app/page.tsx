@@ -5,6 +5,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { fetchMoonPhases } from "../utils/api";
 import type { MoonPhaseEntry } from "../types/moonPhase";
 import type { LocationConfig } from "../config/cities";
+import { CITY_BY_SLUG } from "../config/cities";
 import { CalendarGrid } from "../components/CalendarGrid";
 import { MoonPhaseImagePreloader } from "../components/MoonPhaseImagePreloader";
 import { TimeOfDaySlider } from "../components/TimeOfDaySlider";
@@ -16,7 +17,18 @@ import {
   addLocalMonths,
   ymdToIsoDate,
   startOfLocalMonthYmd,
+  todayLocalDate,
+  isoDateToYmd,
 } from "../utils/time";
+import { resolveLocationFromCoordinates } from "../utils/geocoding";
+import {
+  parseUrlParams,
+  hasDeepLinkParams,
+  cleanHydratedUrlParams,
+  type ViewType,
+  type OutputFormat,
+} from "../utils/urlParams";
+import { renderMoonPhasePng, showPngOnly } from "../utils/renderMoonPng";
 import { DateTime } from "luxon";
 
 function posterCacheKey(locationSlug: string, year: number, viewHour: number): string {
@@ -36,7 +48,12 @@ export default function Home() {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const triggerRef = useRef<HTMLDivElement | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<string>("calendar");
+  const [selectedDate, setSelectedDate] = useState<string>("");
+  const pendingDateRef = useRef<string | null>(null);
   const [viewHour, setViewHour] = useState(DEFAULT_VIEW_HOUR);
+  const [viewType, setViewType] = useState<ViewType>("display");
+  const [outputFormat, setOutputFormat] = useState<OutputFormat>("html");
+  const [embeddedView, setEmbeddedView] = useState(false);
   const [hourlyParallacticEnabled, setHourlyParallacticEnabled] = useState(false);
   const viewHourDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const viewHourSkipInitialRef = useRef(true);
@@ -115,7 +132,7 @@ export default function Home() {
   const fetchMore = useCallback(
     async (direction?: FetchDirection | number) => {
       if (!selectedLocation) return;
-      if (selectedTheme === "hourly-timeline") return;
+      if (selectedTheme === "hourly-timeline" || selectedTheme === "single-day") return;
 
       setLoading(true);
       try {
@@ -218,12 +235,64 @@ export default function Home() {
   }, [moonPhases, loading, fetchMore]);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (!hasDeepLinkParams(params)) return;
+
+    const parsed = parseUrlParams(params);
+    cleanHydratedUrlParams();
+
+    if (parsed.viewType) {
+      setViewType(parsed.viewType);
+      setEmbeddedView(true);
+    }
+    if (parsed.format) setOutputFormat(parsed.format);
+    if (parsed.viewType === "image-only" && !parsed.theme) {
+      setSelectedTheme("single-day");
+    } else if (parsed.viewType === "display" && !parsed.theme) {
+      setSelectedTheme("single-day");
+    } else if (parsed.theme) {
+      setSelectedTheme(parsed.theme);
+    }
+    if (parsed.hour != null) {
+      viewHourSkipInitialRef.current = true;
+      setViewHour(parsed.hour);
+    }
+    if (parsed.date) pendingDateRef.current = parsed.date;
+
+    if (parsed.citySlug) {
+      const loc = CITY_BY_SLUG[parsed.citySlug];
+      if (loc) setSelectedLocation(loc);
+    } else if (parsed.lat != null && parsed.lon != null) {
+      resolveLocationFromCoordinates(parsed.lat, parsed.lon)
+        .then(setSelectedLocation)
+        .catch(() => {
+          alert("Failed to resolve location from URL coordinates");
+        });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount to hydrate from URL
+  }, []);
+
+  const singleDayDateKey = selectedTheme === "single-day" ? selectedDate : null;
+
+  useEffect(() => {
+    if (!selectedLocation || selectedTheme !== "single-day") return;
+    if (pendingDateRef.current) {
+      setSelectedDate(pendingDateRef.current);
+      pendingDateRef.current = null;
+      return;
+    }
+    setSelectedDate(todayLocalDate(tz));
+  }, [selectedLocation?.slug, selectedTheme, tz]);
+
+  useEffect(() => {
     if (!selectedLocation) return;
 
     viewHourSkipInitialRef.current = true;
     setMoonPhases(null);
 
     const fetchData = async () => {
+      if (selectedTheme === "single-day" && !selectedDate) return;
+
       setLoading(true);
       try {
         let dateFrom: string;
@@ -252,6 +321,12 @@ export default function Home() {
           const data = await loadPhases(selectedLocation, dateFrom, dateTo);
           setMoonPhases(data);
           setDateRange({ from: dateFrom, to: dateTo });
+        } else if (selectedTheme === "single-day") {
+          dateFrom = isoDateToYmd(selectedDate);
+          dateTo = dateFrom;
+          const data = await loadPhases(selectedLocation, dateFrom, dateTo);
+          setMoonPhases(data);
+          setDateRange({ from: dateFrom, to: dateTo });
         } else if (selectedTheme === "hourly-timeline") {
           setMoonPhases([]);
           setDateRange(null);
@@ -265,7 +340,7 @@ export default function Home() {
 
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- posterData intentionally excluded
-  }, [selectedLocation?.slug, selectedTheme]);
+  }, [selectedLocation?.slug, selectedTheme, singleDayDateKey]);
 
   // Regenerate when viewHour changes (daily themes only)
   useEffect(() => {
@@ -304,7 +379,33 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewHour]);
 
-  const darkControls = ["calendar", "lunar-cycle", "poster"].includes(selectedTheme);
+  const isImageOnly = viewType === "image-only";
+  const isPngOutput = isImageOnly && outputFormat === "png";
+  const isSingleDay = selectedTheme === "single-day";
+  const isDisplayEmbed = embeddedView && isSingleDay && viewType === "display";
+  const hideChrome = isImageOnly || isDisplayEmbed;
+  const useCenteredLayout = hideChrome;
+
+  useEffect(() => {
+    if (!isPngOutput || loading || !moonPhases?.[0]) return;
+
+    let cancelled = false;
+    renderMoonPhasePng(moonPhases[0], 720)
+      .then((dataUrl) => {
+        if (!cancelled) showPngOnly(dataUrl);
+      })
+      .catch(() => {
+        if (!cancelled) alert("Failed to render moon image");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isPngOutput, loading, moonPhases]);
+
+  const darkControls = ["calendar", "lunar-cycle", "poster", "single-day"].includes(
+    selectedTheme
+  );
   const showViewHourSlider = selectedTheme !== "hourly-timeline";
   const showHourlyParallacticCheckbox =
     selectedTheme === "hourly-timeline" && selectedLocation != null;
@@ -316,9 +417,16 @@ export default function Home() {
   }`;
 
   return (
-    <div className="flex flex-col items-center justify-start min-h-screen p-8 gap-8 bg-black text-white">
-      <MoonPhaseImagePreloader />
+    <div
+      className={
+        useCenteredLayout
+          ? "flex min-h-screen flex-col items-center justify-center bg-black text-white"
+          : "flex flex-col items-center justify-start min-h-screen p-8 gap-8 bg-black text-white"
+      }
+    >
+      {(!isImageOnly || outputFormat === "html") && <MoonPhaseImagePreloader />}
 
+      {!hideChrome && (
       <div className="fixed bottom-4 right-4 z-50">
         <button
           onClick={() => setPerfOpen((o) => !o)}
@@ -380,7 +488,9 @@ export default function Home() {
           </div>
         )}
       </div>
+      )}
 
+      {!hideChrome && (
       <div className="w-full max-w-md flex flex-col gap-4 mb-2">
         <div className="flex-1">
           <label htmlFor="city-search" className="block mb-1 font-medium">
@@ -407,8 +517,23 @@ export default function Home() {
             <option value="lunar-cycle">Lunar Cycle</option>
             <option value="hourly-timeline">Hourly Timeline</option>
             <option value="poster">Poster</option>
+            <option value="single-day">Single Day</option>
           </select>
         </div>
+        {selectedTheme === "single-day" && selectedLocation && selectedDate && (
+          <div className="flex-1">
+            <label htmlFor="day-select" className="block mb-1 font-medium">
+              Day:
+            </label>
+            <input
+              id="day-select"
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className={controlInputClass}
+            />
+          </div>
+        )}
         {showViewHourSlider && selectedLocation && (
           <TimeOfDaySlider
             value={viewHour}
@@ -435,14 +560,15 @@ export default function Home() {
           </label>
         )}
       </div>
+      )}
 
-      {loading && (
+      {loading && !isPngOutput && (
         <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded shadow-lg z-50 transition-opacity">
           Loading moon phases…
         </div>
       )}
 
-      {!loading && !selectedLocation && (
+      {!loading && !selectedLocation && !hideChrome && (
         <div className="mt-12 text-gray-500 text-lg">
           No moon phase data to display. Search for a city or use Near me to begin.
         </div>
@@ -451,7 +577,8 @@ export default function Home() {
       {!loading &&
         selectedLocation &&
         selectedTheme !== "hourly-timeline" &&
-        (!moonPhases || moonPhases.length === 0) && (
+        (!moonPhases || moonPhases.length === 0) &&
+        !hideChrome && (
         <div className="mt-12 text-gray-500 text-lg">
           No moon phase data to display.
         </div>
@@ -462,6 +589,7 @@ export default function Home() {
           (moonPhases && moonPhases.length > 0)) && (
         <>
           <div className="w-full flex flex-col items-center">
+            {!isSingleDay && (
             <div className="mt-2 text-2xl font-semibold text-center">
               Moon Phase Calendar for{" "}
               <span className="font-bold">{selectedLocation.label}</span>
@@ -473,6 +601,8 @@ export default function Home() {
                 </span>
               )}
             </div>
+            )}
+            {!isPngOutput && (
             <CalendarGrid
               moonPhases={moonPhases ?? []}
               theme={selectedTheme}
@@ -481,13 +611,15 @@ export default function Home() {
               longitude={selectedLocation.lon}
               viewHour={viewHour}
               parallacticRotationEnabled={hourlyParallacticEnabled}
-              triggerRef={triggerRef}
+              triggerRef={selectedTheme === "single-day" ? undefined : triggerRef}
               renderLoadPrevious={() => null}
-              key={`${selectedTheme}-${selectedLocation.slug}-${viewHour}`}
+              singleDayView={viewType}
+              key={`${selectedTheme}-${selectedLocation.slug}-${viewHour}-${selectedDate}-${viewType}`}
             />
+            )}
           </div>
 
-          {selectedTheme === "poster" && (
+          {!hideChrome && selectedTheme === "poster" && (
             <div className="flex flex-row gap-2 justify-center mt-4 mb-2">
               <button
                 onClick={() => handlePosterYearChange(-1)}
@@ -508,6 +640,7 @@ export default function Home() {
         </>
       )}
 
+      {!hideChrome && (
       <footer className="w-full max-w-md text-center text-[10px] text-gray-500 leading-snug mt-auto pt-8">
         Location search via{" "}
         <a
@@ -538,6 +671,7 @@ export default function Home() {
         </a>
         .
       </footer>
+      )}
     </div>
   );
 }
