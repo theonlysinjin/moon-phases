@@ -30,10 +30,12 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
+      # Custom domain is at the site root (calendar.blackcatprints.co.za).
+      # Do not set NEXT_BASE_PATH / NEXT_ASSET_PREFIX to the github.io project
+      # URL: GitHub 301s those assets to http:// on the custom domain, which
+      # browsers block as mixed content on HTTPS pages. Same-origin /_next/...
+      # paths work on both HTTP and HTTPS.
       - name: Build static site
-        env:
-          NEXT_BASE_PATH: /${{ github.event.repository.name }}
-          NEXT_ASSET_PREFIX: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
         run: npm run build
 
       - name: Add .nojekyll

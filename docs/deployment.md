@@ -8,14 +8,14 @@ The app is built as a **static export** suitable for GitHub Pages or any static 
 
 - `output: "export"` — no Node server required in production
 - `images.unoptimized: true` — required for static export
-- `basePath` / `assetPrefix` from env — set in CI for project Pages URLs
+- `basePath` / `assetPrefix` from env — leave unset for a custom domain at the site root; set only for project Pages URLs with no custom domain
 
-Environment variables (CI):
+Environment variables (CI, optional):
 
 | Variable | Purpose |
 |----------|---------|
-| `NEXT_BASE_PATH` | e.g. `/moon-calendar` for `https://owner.github.io/moon-calendar/` |
-| `NEXT_ASSET_PREFIX` | Same prefix for asset URLs |
+| `NEXT_BASE_PATH` | e.g. `/moon-calendar` for `https://owner.github.io/moon-calendar/` with no custom domain |
+| `NEXT_ASSET_PREFIX` | Absolute asset host; do **not** set this to `*.github.io/...` when a custom domain is in use — GitHub may 301 those URLs to `http://`, which HTTPS pages then block as mixed content |
 
 ## GitHub Pages (CI)
 
