@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
-// Configure for GitHub Pages static export
-// Use env vars so CI can set them dynamically based on repo name
+// Configure for GitHub Pages static export.
+// Leave NEXT_BASE_PATH / NEXT_ASSET_PREFIX unset for a custom domain at the
+// site root so CSS/JS/fonts stay same-origin. Set them only for a project
+// Pages URL (https://owner.github.io/repo/) with no custom domain.
 const basePath = process.env.NEXT_BASE_PATH || "";
 const assetPrefix = process.env.NEXT_ASSET_PREFIX || undefined;
 

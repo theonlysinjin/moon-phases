@@ -92,7 +92,7 @@ Run with `npm run test` (Vitest, config in `vitest.config.ts`).
 
 | File | Purpose |
 |------|---------|
-| `next.config.ts` | Static export, `basePath` / `assetPrefix` for GitHub Pages |
+| `next.config.ts` | Static export; optional `basePath` / `assetPrefix` for project Pages URLs (unset for custom domains) |
 | `package.json` | Scripts; build runs verify + inline generation before `next build` |
 
 ## Data-loading strategy (by theme)
